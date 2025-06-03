@@ -1,0 +1,367 @@
+@page "/bookmarks"
+@inject IArticleService ArticleService
+@inject ITagService TagService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Bookmarks - RSS Reader</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3>Bookmarks</h3>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-4">
+                        <div>
+                            <h4 class="mb-0">Your Saved Articles</h4>
+                            <small class="text-muted">@(filteredBookmarks.Count) articles</small>
+                        </div>
+                        <div class="btn-group">
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="oi oi-filter"></i> Filter
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="filterDropdown">
+                                    <li><h6 class="dropdown-header">Read Status</h6></li>
+                                    <li>
+                                        <button class="dropdown-item @(readFilter == "all" ? "active" : "")" @onclick="() => SetReadFilter("all")">
+                                            Show All
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button class="dropdown-item @(readFilter == "read" ? "active" : "")" @onclick="() => SetReadFilter("read")">
+                                            Read Only
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button class="dropdown-item @(readFilter == "unread" ? "active" : "")" @onclick="() => SetReadFilter("unread")">
+                                            Unread Only
+                                        </button>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><h6 class="dropdown-header">Sort By</h6></li>
+                                    <li>
+                                        <button class="dropdown-item @(sortOrder == "newest" ? "active" : "")" @onclick="() => SetSortOrder("newest")">
+                                            Newest First
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button class="dropdown-item @(sortOrder == "oldest" ? "active" : "")" @onclick="() => SetSortOrder("oldest")">
+                                            Oldest First
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button class="dropdown-item @(sortOrder == "bookmark" ? "active" : "")" @onclick="() => SetSortOrder("bookmark")">
+                                            Bookmark Date
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                            <button class="btn btn-outline-secondary" @onclick="ExportBookmarks">
+                                <i class="oi oi-cloud-download"></i> Export
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (isLoading)
+                    {
+                        <div class="text-center my-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p>Loading bookmarks...</p>
+                        </div>
+                    }
+                    else if (!bookmarks.Any())
+                    {
+                        <div class="alert alert-info">
+                            <p>You don't have any bookmarked articles yet.</p>
+                            <p>Use the bookmark button while reading articles to save them for later.</p>
+                            <a href="/" class="btn btn-primary">Browse Articles</a>
+                        </div>
+                    }
+                    else if (!filteredBookmarks.Any())
+                    {
+                        <div class="alert alert-info">
+                            <p>No bookmarks match your current filters.</p>
+                            <button class="btn btn-outline-primary" @onclick="ResetFilters">Reset Filters</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Tags</h5>
+                                    </div>
+                                    <div class="list-group list-group-flush">
+                                        <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @(selectedTag == null ? "active" : "")"
+                                                @onclick="() => SelectTag(null)">
+                                            All Tags
+                                            <span class="badge bg-primary rounded-pill">@bookmarks.Count</span>
+                                        </button>
+                                        
+                                        @if (tags.Any())
+                                        {
+                                            @foreach (var tag in tags.OrderByDescending(t => t.ArticleCount))
+                                            {
+                                                <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @(selectedTag == tag ? "active" : "")"
+                                                        @onclick="() => SelectTag(tag)">
+                                                    @tag.Name
+                                                    <span class="badge bg-primary rounded-pill">@tag.ArticleCount</span>
+                                                </button>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <div class="list-group-item text-center text-muted py-3">
+                                                No tags yet
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="card-footer">
+                                        <button class="btn btn-sm btn-outline-primary w-100" @onclick="ShowManageTags">
+                                            <i class="oi oi-tag"></i> Manage Tags
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-9">
+                                <div class="card">
+                                    <div class="list-group list-group-flush">
+                                        @foreach (var bookmark in filteredBookmarks)
+                                        {
+                                            <div class="list-group-item @(!bookmark.IsRead ? "unread-item" : "")">
+                                                <div class="d-flex justify-content-between">
+                                                    <div>
+                                                        <h5 class="mb-1">
+                                                            <a href="/article/@bookmark.Id" class="text-decoration-none @(!bookmark.IsRead ? "fw-bold" : "")">
+                                                                @bookmark.Title
+                                                            </a>
+                                                        </h5>
+                                                        <p class="mb-1 text-muted small">
+                                                            <span>@bookmark.FeedTitle</span>
+                                                            <span class="mx-1">•</span>
+                                                            <span>Bookmarked on @bookmark.BookmarkDate?.ToString("MMM d, yyyy")</span>
+                                                            @if (bookmark.Authors != null && bookmark.Authors.Any())
+                                                            {
+                                                                <span class="mx-1">•</span>
+                                                                <span>by @string.Join(", ", bookmark.Authors)</span>
+                                                            }
+                                                        </p>
+                                                        <p class="mb-2 text-truncate">
+                                                            @(string.IsNullOrEmpty(bookmark.Summary) ? "No summary available" : bookmark.Summary)
+                                                        </p>
+                                                        
+                                                        @if (bookmark.Tags != null && bookmark.Tags.Any())
+                                                        {
+                                                            <div class="mb-2">
+                                                                @foreach (var tagId in bookmark.Tags)
+                                                                {
+                                                                    var tag = tags.FirstOrDefault(t => t.Id == tagId);
+                                                                    if (tag != null)
+                                                                    {
+                                                                        <span class="badge bg-secondary me-1">@tag.Name</span>
+                                                                    }
+                                                                }
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                    <div>
+                                                        <div class="btn-group-vertical btn-group-sm">
+                                                            <button class="btn btn-outline-secondary" title="@(bookmark.IsRead ? "Mark as unread" : "Mark as read")" 
+                                                                    @onclick="() => ToggleReadStatus(bookmark)">
+                                                                <i class="oi @(bookmark.IsRead ? "oi-envelope-closed" : "oi-envelope-open")"></i>
+                                                            </button>
+                                                            <button class="btn btn-outline-danger" title="Remove bookmark"
+                                                                    @onclick="() => RemoveBookmark(bookmark)">
+                                                                <i class="oi oi-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Article> bookmarks = new();
+    private List<Article> filteredBookmarks = new();
+    private List<Tag> tags = new();
+    private bool isLoading = true;
+    private string readFilter = "all"; // all, read, unread
+    private string sortOrder = "bookmark"; // newest, oldest, bookmark
+    private Tag selectedTag = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        
+        try
+        {
+            bookmarks = await ArticleService.GetBookmarkedArticlesAsync();
+            tags = await TagService.GetTagsWithCountsAsync();
+            
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading bookmarks: {ex.Message}");
+        }
+        
+        isLoading = false;
+    }
+
+    private void ApplyFilters()
+    {
+        var filtered = bookmarks;
+        
+        // Apply read filter
+        if (readFilter == "read")
+        {
+            filtered = filtered.Where(b => b.IsRead).ToList();
+        }
+        else if (readFilter == "unread")
+        {
+            filtered = filtered.Where(b => !b.IsRead).ToList();
+        }
+        
+        // Apply tag filter
+        if (selectedTag != null)
+        {
+            filtered = filtered.Where(b => b.Tags != null && b.Tags.Contains(selectedTag.Id)).ToList();
+        }
+        
+        // Apply sort order
+        switch (sortOrder)
+        {
+            case "newest":
+                filtered = filtered.OrderByDescending(b => b.PublishDate).ToList();
+                break;
+            case "oldest":
+                filtered = filtered.OrderBy(b => b.PublishDate).ToList();
+                break;
+            case "bookmark":
+            default:
+                filtered = filtered.OrderByDescending(b => b.BookmarkDate).ToList();
+                break;
+        }
+        
+        filteredBookmarks = filtered;
+    }
+
+    private void SetReadFilter(string filter)
+    {
+        readFilter = filter;
+        ApplyFilters();
+    }
+
+    private void SetSortOrder(string order)
+    {
+        sortOrder = order;
+        ApplyFilters();
+    }
+
+    private void SelectTag(Tag tag)
+    {
+        selectedTag = tag;
+        ApplyFilters();
+    }
+
+    private void ResetFilters()
+    {
+        readFilter = "all";
+        sortOrder = "bookmark";
+        selectedTag = null;
+        ApplyFilters();
+    }
+
+    private async Task ToggleReadStatus(Article article)
+    {
+        try
+        {
+            await ArticleService.MarkArticleAsReadAsync(article.Id, !article.IsRead);
+            article.IsRead = !article.IsRead;
+            
+            // Refresh the filters in case they're based on read status
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error toggling read status: {ex.Message}");
+        }
+    }
+
+    private async Task RemoveBookmark(Article article)
+    {
+        try
+        {
+            await ArticleService.BookmarkArticleAsync(article.Id, false);
+            
+            // Remove from list
+            bookmarks.Remove(article);
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error removing bookmark: {ex.Message}");
+        }
+    }
+
+    private async Task ExportBookmarks()
+    {
+        try
+        {
+            var markdown = await ArticleService.ExportBookmarksAsMarkdownAsync();
+            
+            // Use JS to create a downloadable file
+            await JSRuntime.InvokeVoidAsync("downloadText", "bookmarks.md", markdown);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error exporting bookmarks: {ex.Message}");
+        }
+    }
+
+    private void ShowManageTags()
+    {
+        // This would navigate to a tag management page or show a modal
+        // For simplicity, we're not implementing this yet
+    }
+}
+
+<style>
+    .unread-item {
+        border-left: 4px solid #0d6efd;
+    }
+</style>
+
+<script>
+    window.downloadText = (filename, text) => {
+        const element = document.createElement('a');
+        element.setAttribute('href', 'data:text/markdown;charset=utf-8,' + encodeURIComponent(text));
+        element.setAttribute('download', filename);
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+    }
+</script>

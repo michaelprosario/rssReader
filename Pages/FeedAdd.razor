@@ -13,22 +13,21 @@
                 </div>
                 <div class="card-body">
                     <div class="mb-4">
-                        <ul class="nav nav-tabs" id="feedTabs" role="tablist">
-                            <li class="nav-item" role="presentation">
+                        <ul class="nav nav-tabs" id="feedTabs" role="tablist">                            <li class="nav-item" role="presentation">
                                 <button class="nav-link @(activeTab == "url" ? "active" : "")" 
-                                        @onclick="() => activeTab = "url"">
+                                        @onclick='() => activeTab = "url"'>
                                     Add by URL
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link @(activeTab == "discover" ? "active" : "")"
-                                        @onclick="() => activeTab = "discover"">
+                                        @onclick='() => activeTab = "discover"'>
                                     Discover Feeds
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link @(activeTab == "opml" ? "active" : "")"
-                                        @onclick="() => activeTab = "opml"">
+                                        @onclick='() => activeTab = "opml"'>
                                     Import OPML
                                 </button>
                             </li>

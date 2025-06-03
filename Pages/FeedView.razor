@@ -1,0 +1,407 @@
+@page "/feeds/{FeedId}"
+@inject IFeedService FeedService
+@inject IArticleService ArticleService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>@(feed?.Title ?? "Loading...") - RSS Reader</PageTitle>
+
+<div class="container-fluid">
+    @if (isLoading)
+    {
+        <div class="text-center my-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Loading feed...</p>
+        </div>
+    }
+    else if (feed == null)
+    {
+        <div class="alert alert-danger">
+            <h4>Feed not found</h4>
+            <p>The feed you're looking for doesn't exist or has been deleted.</p>
+            <a href="/" class="btn btn-primary">Return to Dashboard</a>
+        </div>
+    }
+    else
+    {
+        <div class="row mb-4">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+                        <li class="breadcrumb-item active">@feed.Title</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col">
+                <div class="card">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            @if (!string.IsNullOrEmpty(feed.LogoUrl))
+                            {
+                                <img src="@feed.LogoUrl" alt="@feed.Title" class="feed-logo me-2" />
+                            }
+                            else
+                            {
+                                <i class="oi oi-rss me-2"></i>
+                            }
+                            <h3 class="mb-0">@feed.Title</h3>
+                        </div>
+                        <div>
+                            <button class="btn btn-light me-2" @onclick="RefreshFeed">
+                                <i class="oi oi-reload"></i> Refresh
+                            </button>
+                            <div class="dropdown d-inline-block">
+                                <button class="btn btn-light dropdown-toggle" type="button" id="feedMenuButton"
+                                       data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="oi oi-menu"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="feedMenuButton">
+                                    <li>
+                                        <button class="dropdown-item" @onclick="MarkAllAsRead">
+                                            Mark All as Read
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button class="dropdown-item" @onclick="EditFeed">
+                                            Edit Feed
+                                        </button>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <button class="dropdown-item text-danger" @onclick="ShowDeleteConfirmation">
+                                            Delete Feed
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(feed.Description))
+                        {
+                            <p class="text-muted">@feed.Description</p>
+                        }
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge bg-primary me-2">
+                                    @feed.UnreadCount unread
+                                </span>
+                                <small class="text-muted">Last updated: @feed.LastUpdated.ToString("g")</small>
+                            </div>
+                            @if (!string.IsNullOrEmpty(feed.WebsiteUrl))
+                            {
+                                <a href="@feed.WebsiteUrl" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    Visit Website <i class="oi oi-external-link"></i>
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h4>Articles</h4>
+                    <div class="d-flex">
+                        <div class="form-check form-switch me-3">
+                            <input class="form-check-input" type="checkbox" id="unread-filter"
+                                  @bind="unreadOnly" />
+                            <label class="form-check-label" for="unread-filter">
+                                Show unread only
+                            </label>
+                        </div>
+                        <select class="form-select form-select-sm" style="width:auto"
+                               @bind="sortOrder">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                        </select>
+                    </div>
+                </div>
+
+                @if (!articles.Any())
+                {
+                    <div class="alert alert-info">
+                        <p>No articles found for this feed.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="list-group">
+                        @foreach (var article in GetFilteredArticles())
+                        {
+                            <div class="list-group-item list-group-item-action @(!article.IsRead ? "unread-item" : "")">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <a href="/article/@article.Id" class="article-title @(!article.IsRead ? "fw-bold" : "")">
+                                        @article.Title
+                                    </a>
+                                    <small class="article-date">
+                                        @article.PublishDate.ToString("MMM d, yyyy")
+                                    </small>
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(article.Summary) && settings.ShowArticlePreviews)
+                                {
+                                    <div class="article-summary mt-2">
+                                        @((MarkupString)article.Summary)
+                                    </div>
+                                }
+
+                                <div class="article-actions mt-2">
+                                    <button class="btn btn-sm btn-outline-secondary" 
+                                           @onclick="() => ToggleReadStatus(article)">
+                                        <i class="oi @(article.IsRead ? "oi-envelope-open" : "oi-envelope-closed")"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary ms-1" 
+                                           @onclick="() => ToggleBookmark(article)">
+                                        <i class="oi @(article.IsBookmarked ? "oi-bookmark" : "oi-star")"></i>
+                                    </button>
+                                    <a href="/article/@article.Id" class="btn btn-sm btn-outline-primary ms-1">
+                                        Read
+                                    </a>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="@(!showDeleteModal ? "true" : "false")">
+        <div class="modal-dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
+                        <button type="button" class="btn-close" @onclick="() => showDeleteModal = false" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to delete the feed "@feed?.Title"?</p>
+                        <p class="text-danger">This will permanently remove the feed and all its articles.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="() => showDeleteModal = false">Cancel</button>
+                        <button type="button" class="btn btn-danger" @onclick="DeleteFeed">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string FeedId { get; set; }
+
+    private Feed feed;
+    private List<Article> articles = new();
+    private bool isLoading = true;
+    private bool unreadOnly = false;
+    private string sortOrder = "newest";
+    private bool showDeleteModal = false;
+    private AppSettings settings = new AppSettings();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (feed == null || feed.Id != FeedId)
+        {
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+
+        try
+        {
+            feed = await FeedService.GetFeedByIdAsync(FeedId);
+            articles = await ArticleService.GetArticlesAsync(FeedId);
+            
+            // Keep track of where articles came from
+            foreach (var article in articles)
+            {
+                article.FeedTitle = feed?.Title ?? "Unknown";
+            }
+        }
+        catch (Exception)
+        {
+            feed = null;
+            articles.Clear();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private List<Article> GetFilteredArticles()
+    {
+        var filtered = articles;
+        
+        if (unreadOnly)
+        {
+            filtered = filtered.Where(a => !a.IsRead).ToList();
+        }
+        
+        if (sortOrder == "newest")
+        {
+            filtered = filtered.OrderByDescending(a => a.PublishDate).ToList();
+        }
+        else
+        {
+            filtered = filtered.OrderBy(a => a.PublishDate).ToList();
+        }
+        
+        return filtered;
+    }
+
+    private async Task RefreshFeed()
+    {
+        isLoading = true;
+        
+        try
+        {
+            await FeedService.RefreshFeedsAsync(FeedId);
+            await LoadDataAsync();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task MarkAllAsRead()
+    {
+        try
+        {
+            await ArticleService.MarkAllAsReadAsync(FeedId);
+            
+            // Update our local data
+            foreach (var article in articles)
+            {
+                article.IsRead = true;
+                article.ReadDate = DateTime.Now;
+            }
+            
+            // Also update the feed's unread count
+            if (feed != null)
+            {
+                feed.UnreadCount = 0;
+            }
+        }
+        catch (Exception)
+        {
+            // Handle error
+        }
+    }
+
+    private void EditFeed()
+    {
+        // Navigate to edit page
+    }
+
+    private void ShowDeleteConfirmation()
+    {
+        showDeleteModal = true;
+    }
+
+    private async Task DeleteFeed()
+    {
+        if (feed != null)
+        {
+            try
+            {
+                await FeedService.RemoveFeedAsync(feed.Id);
+                // Navigate back to dashboard
+            }
+            catch (Exception)
+            {
+                // Handle error
+            }
+            finally
+            {
+                showDeleteModal = false;
+            }
+        }
+    }
+
+    private async Task ToggleReadStatus(Article article)
+    {
+        try
+        {
+            bool newReadStatus = !article.IsRead;
+            await ArticleService.MarkArticleAsReadAsync(article.Id, newReadStatus);
+            
+            article.IsRead = newReadStatus;
+            article.ReadDate = newReadStatus ? DateTime.Now : null;
+            
+            // Update feed unread count
+            if (feed != null)
+            {
+                feed.UnreadCount += newReadStatus ? -1 : 1;
+            }
+        }
+        catch (Exception)
+        {
+            // Handle error
+        }
+    }
+
+    private async Task ToggleBookmark(Article article)
+    {
+        try
+        {
+            bool newBookmarkStatus = !article.IsBookmarked;
+            await ArticleService.BookmarkArticleAsync(article.Id, newBookmarkStatus);
+            
+            article.IsBookmarked = newBookmarkStatus;
+            article.BookmarkDate = newBookmarkStatus ? DateTime.Now : null;
+        }
+        catch (Exception)
+        {
+            // Handle error
+        }
+    }
+}
+
+<style>
+    .feed-logo {
+        max-width: 32px;
+        max-height: 32px;
+    }
+    
+    .unread-item {
+        border-left: 4px solid #0d6efd;
+    }
+    
+    .article-title {
+        color: inherit;
+        text-decoration: none;
+        display: block;
+        max-width: 75%;
+    }
+    
+    .article-title:hover {
+        color: #0d6efd;
+    }
+    
+    .article-summary {
+        max-height: 80px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>

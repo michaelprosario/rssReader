@@ -1,0 +1,288 @@
+@page "/article/{ArticleId}"
+@inject IArticleService ArticleService
+@inject IFeedService FeedService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>@(article?.Title ?? "Loading...") - RSS Reader</PageTitle>
+
+<div class="container">
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Loading article...</p>
+        </div>
+    }
+    else if (article == null)
+    {
+        <div class="alert alert-warning">
+            <h4>Article not found</h4>
+            <p>The requested article could not be found. It may have been deleted or the ID is incorrect.</p>
+            <a href="/" class="btn btn-primary">Go to Dashboard</a>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="mb-3">
+                    <a href="/" class="btn btn-link p-0">
+                        <i class="oi oi-home"></i> Home
+                    </a>
+                    <span class="mx-2">/</span>
+                    <a href="/feeds/@article.FeedId" class="btn btn-link p-0">
+                        @feedTitle
+                    </a>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        <h1 class="card-title mb-3">@article.Title</h1>
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div>
+                                <span class="text-muted">
+                                    @article.PublishDate.ToString("MMM d, yyyy h:mm tt")
+                                    @if (article.Authors != null && article.Authors.Any())
+                                    {
+                                        <span> • by @string.Join(", ", article.Authors)</span>
+                                    }
+                                </span>
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn btn-outline-secondary" @onclick="ToggleReadStatus">
+                                    <i class="oi @(article.IsRead ? "oi-envelope-closed" : "oi-envelope-open")"></i>
+                                    <span class="ms-1">@(article.IsRead ? "Mark as unread" : "Mark as read")</span>
+                                </button>
+                                <button class="btn @(article.IsBookmarked ? "btn-warning" : "btn-outline-secondary")" @onclick="ToggleBookmark">
+                                    <i class="oi oi-bookmark"></i>
+                                    <span class="ms-1">@(article.IsBookmarked ? "Remove bookmark" : "Bookmark")</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            @if (!string.IsNullOrEmpty(article.ImageUrl))
+                            {
+                                <img src="@article.ImageUrl" class="img-fluid mb-3 rounded" alt="Article image" />
+                            }
+                            
+                            <div class="article-content @(useReaderMode ? "reader-mode" : "")">
+                                @if (!string.IsNullOrEmpty(article.Content))
+                                {
+                                    @((MarkupString)article.Content)
+                                }
+                                else if (!string.IsNullOrEmpty(article.Summary))
+                                {
+                                    @((MarkupString)article.Summary)
+                                }
+                                else
+                                {
+                                    <div class="alert alert-info">No content available.</div>
+                                }
+                            </div>
+                            
+                            @if (!string.IsNullOrEmpty(article.Url))
+                            {
+                                <div class="mt-4">
+                                    <a href="@article.Url" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary">
+                                        <i class="oi oi-external-link"></i> Read Original
+                                    </a>
+                                </div>
+                            }
+                        </div>
+
+                        @if (article.Categories != null && article.Categories.Any())
+                        {
+                            <div class="mt-3">
+                                <h6>Categories</h6>
+                                <div>
+                                    @foreach (var category in article.Categories)
+                                    {
+                                        <span class="badge bg-secondary me-1">@category</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        
+                        @if (article.Tags != null && article.Tags.Any())
+                        {
+                            <div class="mt-3">
+                                <h6>Tags</h6>
+                                <div>
+                                    @foreach (var tag in article.Tags)
+                                    {
+                                        <span class="badge bg-primary me-1">@tag</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div class="card-footer d-flex justify-content-between">
+                        <button class="btn btn-outline-secondary" @onclick="ToggleReaderMode">
+                            <i class="oi oi-book"></i> @(useReaderMode ? "Normal Mode" : "Reader Mode")
+                        </button>
+                        
+                        @if (!article.IsFullContentFetched && !string.IsNullOrEmpty(article.Url) && string.IsNullOrEmpty(article.Content))
+                        {
+                            <button class="btn btn-outline-secondary @(isFetchingContent ? "disabled" : "")" @onclick="FetchFullContent">
+                                @if (isFetchingContent)
+                                {
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    <span class="ms-1">Fetching...</span>
+                                }
+                                else
+                                {
+                                    <span><i class="oi oi-data-transfer-download"></i> Fetch Full Content</span>
+                                }
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string ArticleId { get; set; }
+
+    private Article article;
+    private bool isLoading = true;
+    private bool useReaderMode = false;
+    private bool isFetchingContent = false;
+    private string feedTitle = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadArticleAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadArticleAsync();
+    }
+
+    private async Task LoadArticleAsync()
+    {
+        isLoading = true;
+
+        try
+        {
+            article = await ArticleService.GetArticleByIdAsync(ArticleId);
+
+            if (article != null)
+            {
+                // Mark as read automatically
+                if (!article.IsRead)
+                {
+                    await ArticleService.MarkArticleAsReadAsync(article.Id, true);
+                    article.IsRead = true;
+                }
+
+                // Get feed title
+                var feed = await FeedService.GetFeedByIdAsync(article.FeedId);
+                feedTitle = feed?.Title ?? "Unknown Feed";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading article: {ex.Message}");
+        }
+
+        isLoading = false;
+    }
+
+    private async Task ToggleReadStatus()
+    {
+        try
+        {
+            await ArticleService.MarkArticleAsReadAsync(article.Id, !article.IsRead);
+            article.IsRead = !article.IsRead;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error toggling read status: {ex.Message}");
+        }
+    }
+
+    private async Task ToggleBookmark()
+    {
+        try
+        {
+            await ArticleService.BookmarkArticleAsync(article.Id, !article.IsBookmarked);
+            article.IsBookmarked = !article.IsBookmarked;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error toggling bookmark: {ex.Message}");
+        }
+    }
+
+    private void ToggleReaderMode()
+    {
+        useReaderMode = !useReaderMode;
+    }
+
+    private async Task FetchFullContent()
+    {
+        if (isFetchingContent || article.IsFullContentFetched)
+        {
+            return;
+        }
+
+        isFetchingContent = true;
+
+        try
+        {
+            article = await ArticleService.FetchFullContentAsync(article.Id);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching full content: {ex.Message}");
+            await JSRuntime.InvokeVoidAsync("alert", $"Failed to fetch full content: {ex.Message}");
+        }
+        finally
+        {
+            isFetchingContent = false;
+        }
+    }
+}
+
+<style>
+    .article-content {
+        font-size: 1.1rem;
+        line-height: 1.6;
+    }
+    
+    .article-content img {
+        max-width: 100%;
+        height: auto;
+    }
+    
+    .article-content.reader-mode {
+        font-family: Georgia, serif;
+        font-size: 1.2rem;
+        line-height: 1.8;
+        color: #333;
+        max-width: 700px;
+        margin: 0 auto;
+    }
+    
+    .article-content.reader-mode h1,
+    .article-content.reader-mode h2,
+    .article-content.reader-mode h3,
+    .article-content.reader-mode h4,
+    .article-content.reader-mode h5,
+    .article-content.reader-mode h6 {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        margin-top: 1.5em;
+        margin-bottom: 0.5em;
+    }
+    
+    .article-content.reader-mode p {
+        margin-bottom: 1.2em;
+    }
+</style>

@@ -32,29 +32,39 @@ namespace rssReader.Services
         Task<Tag> CreateTagAsync(Tag tag);
         
         /// <summary>
-        /// Updates a tag.
+        /// Updates an existing tag.
         /// </summary>
         Task<Tag> UpdateTagAsync(Tag tag);
         
         /// <summary>
         /// Deletes a tag.
         /// </summary>
-        Task<bool> DeleteTagAsync(string id);
+        Task DeleteTagAsync(string id);
         
         /// <summary>
-        /// Merges two tags.
+        /// Gets the tags for an article.
         /// </summary>
-        Task<Tag> MergeTagsAsync(string sourceTagId, string targetTagId);
+        Task<List<Tag>> GetTagsByArticleIdAsync(string articleId);
         
         /// <summary>
-        /// Gets articles by tag.
+        /// Adds a tag to an article.
         /// </summary>
-        Task<List<Article>> GetArticlesByTagAsync(string tagId);
+        Task AddTagToArticleAsync(string tagId, string articleId);
         
         /// <summary>
-        /// Gets tags with article counts.
+        /// Removes a tag from an article.
         /// </summary>
-        Task<List<Tag>> GetTagsWithCountsAsync();
+        Task RemoveTagFromArticleAsync(string tagId, string articleId);
+        
+        /// <summary>
+        /// Gets the count of articles with a specific tag
+        /// </summary>
+        Task<int> GetArticleCountByTagIdAsync(string tagId);
+        
+        /// <summary>
+        /// Gets all articles with a specific tag
+        /// </summary>
+        Task<List<Article>> GetArticlesByTagIdAsync(string tagId);
     }
 
     /// <summary>
@@ -168,14 +178,14 @@ namespace rssReader.Services
         }
 
         /// <inheritdoc/>
-        public async Task<bool> DeleteTagAsync(string id)
+        public async Task DeleteTagAsync(string id)
         {
             var tags = await GetAllTagsAsync();
             var tag = tags.FirstOrDefault(t => t.Id == id);
 
             if (tag == null)
             {
-                return false;
+                return;
             }
 
             tags.Remove(tag);
@@ -198,8 +208,6 @@ namespace rssReader.Services
             {
                 await _dataStorage.SaveDataAsync("articles.json", articles);
             }
-
-            return true;
         }
 
         /// <inheritdoc/>
@@ -282,6 +290,81 @@ namespace rssReader.Services
 
             // Sort by count then by name
             return tags.OrderByDescending(t => t.ArticleCount).ThenBy(t => t.Name).ToList();
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<Tag>> GetTagsByArticleIdAsync(string articleId)
+        {
+            var tags = await GetAllTagsAsync();
+            var article = await _articleService.GetArticleByIdAsync(articleId);
+
+            if (article == null || article.Tags == null)
+            {
+                return new List<Tag>();
+            }
+
+            return tags.Where(t => article.Tags.Contains(t.Id)).ToList();
+        }
+
+        /// <inheritdoc/>
+        public async Task AddTagToArticleAsync(string tagId, string articleId)
+        {
+            var article = await _articleService.GetArticleByIdAsync(articleId);
+
+            if (article == null)
+            {
+                throw new InvalidOperationException($"Article with ID {articleId} not found");
+            }
+
+            if (article.Tags == null)
+            {
+                article.Tags = new List<string>();
+            }
+
+            if (!article.Tags.Contains(tagId))
+            {
+                article.Tags.Add(tagId);
+                await _dataStorage.SaveDataAsync("articles.json", article);
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task RemoveTagFromArticleAsync(string tagId, string articleId)
+        {
+            var article = await _articleService.GetArticleByIdAsync(articleId);
+
+            if (article == null)
+            {
+                throw new InvalidOperationException($"Article with ID {articleId} not found");
+            }
+
+            if (article.Tags != null && article.Tags.Contains(tagId))
+            {
+                article.Tags.Remove(tagId);
+                await _dataStorage.SaveDataAsync("articles.json", article);
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<int> GetArticleCountByTagIdAsync(string tagId)
+        {
+            var articles = await _articleService.GetArticlesAsync();
+            return articles.Count(a => a.Tags != null && a.Tags.Contains(tagId));
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<Article>> GetArticlesByTagIdAsync(string tagId)
+        {
+            var tag = await GetTagByIdAsync(tagId);
+            if (tag == null)
+            {
+                throw new InvalidOperationException($"Tag with ID {tagId} not found");
+            }
+
+            var allArticles = await _articleService.GetArticlesAsync();
+            return allArticles.Where(a => a.Tags != null && a.Tags.Contains(tagId))
+                .OrderByDescending(a => a.PublishDate)
+                .ToList();
         }
     }
 }

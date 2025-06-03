@@ -1,0 +1,378 @@
+@page "/tags"
+@inject ITagService TagService
+@inject IArticleService ArticleService
+
+<PageTitle>RSS Reader - Tags</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3>Manage Tags</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>Create New Tag</h5>
+                                </div>
+                                <div class="card-body">
+                                    <EditForm Model="newTag" OnValidSubmit="CreateTag">
+                                        <DataAnnotationsValidator />
+                                        <ValidationSummary />
+
+                                        <div class="mb-3">
+                                            <label for="tagName" class="form-label">Tag Name</label>
+                                            <InputText id="tagName" @bind-Value="newTag.Name" class="form-control" />
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="tagDescription" class="form-label">Description (Optional)</label>
+                                            <InputTextArea id="tagDescription" @bind-Value="newTag.Description" class="form-control" rows="2" />
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="tagColor" class="form-label">Color</label>
+                                            <div class="input-group">
+                                                <InputText id="tagColor" @bind-Value="newTag.Color" class="form-control" placeholder="#3498db" />
+                                                <button type="button" class="btn btn-outline-secondary" @onclick="GenerateRandomColor">
+                                                    Random
+                                                </button>
+                                            </div>
+                                            <small class="form-text text-muted">Enter a hex color code (e.g., #3498db)</small>
+                                        </div>
+
+                                        @if (!string.IsNullOrEmpty(newTag.Color))
+                                        {
+                                            <div class="mb-3">
+                                                <label class="form-label">Preview</label>
+                                                <div class="d-flex align-items-center">
+                                                    <span class="badge me-2" style="background-color: @newTag.Color;">@newTag.Name</span>
+                                                </div>
+                                            </div>
+                                        }
+
+                                        <button type="submit" class="btn btn-primary">Create Tag</button>
+                                    </EditForm>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>Your Tags</h5>
+                                </div>
+                                <div class="card-body">
+                                    @if (isLoading)
+                                    {
+                                        <div class="text-center my-4">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                            <p>Loading tags...</p>
+                                        </div>
+                                    }
+                                    else if (!tags.Any())
+                                    {
+                                        <div class="alert alert-info">
+                                            <p>You haven't created any tags yet.</p>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="list-group">
+                                            @foreach (var tag in tags.OrderBy(t => t.Name))
+                                            {
+                                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <span class="badge me-2" style="background-color: @tag.Color;">@tag.Name</span>
+                                                        @if (!string.IsNullOrEmpty(tag.Description))
+                                                        {
+                                                            <small class="text-muted">@tag.Description</small>
+                                                        }
+                                                    </div>
+                                                    <div>
+                                                        <span class="badge bg-secondary rounded-pill me-2">@tag.ArticleCount articles</span>
+                                                        <button class="btn btn-sm btn-outline-secondary me-2" @onclick="() => StartEditingTag(tag)">
+                                                            <i class="oi oi-pencil"></i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDeleteTag(tag)">
+                                                            <i class="oi oi-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (tags.Any())
+                    {
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h5>Tagged Articles</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <div class="d-flex flex-wrap">
+                                        @foreach (var tag in tags)
+                                        {
+                                            <span class="badge me-2 mb-2 @(selectedTagId == tag.Id ? "border border-2 border-dark" : "")" 
+                                                style="background-color: @tag.Color; cursor: pointer;"
+                                                @onclick="() => SelectTag(tag.Id)">
+                                                @tag.Name (@tag.ArticleCount)
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(selectedTagId) && taggedArticles.Any())
+                                {
+                                    <div class="row">
+                                        @foreach (var article in taggedArticles)
+                                        {
+                                            <div class="col-md-6 mb-3">
+                                                <div class="card h-100">
+                                                    <div class="card-body">
+                                                        <h5 class="card-title">
+                                                            <a href="/article/@article.Id">@article.Title</a>
+                                                        </h5>
+                                                        <p class="card-text">@((MarkupString)(article.Summary?.Length > 150 ? article.Summary.Substring(0, 150) + "..." : article.Summary))</p>
+                                                        <small class="text-muted">@article.PublishDate.ToString("MMM d, yyyy")</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else if (!string.IsNullOrEmpty(selectedTagId))
+                                {
+                                    <div class="alert alert-info">
+                                        <p>No articles with this tag.</p>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-info">
+                                        <p>Select a tag to see articles.</p>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (showDeleteConfirmation)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Delete Tag</h5>
+                    <button type="button" class="btn-close" @onclick="CancelDeleteTag"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete the tag "<strong>@tagToDelete?.Name</strong>"?</p>
+                    <p>This will remove the tag from all articles, but the articles themselves will not be deleted.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDeleteTag">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="DeleteTag">Delete Tag</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showEditModal)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Tag</h5>
+                    <button type="button" class="btn-close" @onclick="CancelEditTag"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="editingTag" OnValidSubmit="UpdateTag">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-3">
+                            <label for="editTagName" class="form-label">Tag Name</label>
+                            <InputText id="editTagName" @bind-Value="editingTag.Name" class="form-control" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="editTagDescription" class="form-label">Description (Optional)</label>
+                            <InputTextArea id="editTagDescription" @bind-Value="editingTag.Description" class="form-control" rows="2" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="editTagColor" class="form-label">Color</label>
+                            <div class="input-group">
+                                <InputText id="editTagColor" @bind-Value="editingTag.Color" class="form-control" placeholder="#3498db" />
+                                <button type="button" class="btn btn-outline-secondary" @onclick="() => editingTag.Color = GenerateHexColor()">
+                                    Random
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(editingTag.Color))
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Preview</label>
+                                <div class="d-flex align-items-center">
+                                    <span class="badge me-2" style="background-color: @editingTag.Color;">@editingTag.Name</span>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CancelEditTag">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Update Tag</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Tag> tags = new List<Tag>();
+    private Tag newTag = new Tag();
+    private Tag editingTag = new Tag();
+    private Tag tagToDelete;
+    private bool isLoading = true;
+    private bool showDeleteConfirmation = false;
+    private bool showEditModal = false;
+    private string selectedTagId = "";
+    private List<Article> taggedArticles = new List<Article>();
+    private Random random = new Random();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTags();
+    }
+
+    private async Task LoadTags()
+    {
+        isLoading = true;
+        tags = await TagService.GetAllTagsAsync();
+        
+        // Update article counts for each tag
+        foreach (var tag in tags)
+        {
+            tag.ArticleCount = await TagService.GetArticleCountByTagIdAsync(tag.Id);
+        }
+        
+        isLoading = false;
+    }
+
+    private async Task CreateTag()
+    {
+        if (string.IsNullOrWhiteSpace(newTag.Name))
+            return;
+
+        if (string.IsNullOrWhiteSpace(newTag.Color))
+        {
+            newTag.Color = GenerateHexColor();
+        }
+
+        await TagService.CreateTagAsync(newTag);
+        newTag = new Tag(); // Reset the form
+        await LoadTags();
+    }
+
+    private void StartEditingTag(Tag tag)
+    {
+        editingTag = new Tag
+        {
+            Id = tag.Id,
+            Name = tag.Name,
+            Description = tag.Description,
+            Color = tag.Color,
+            DateCreated = tag.DateCreated
+        };
+        showEditModal = true;
+    }
+
+    private async Task UpdateTag()
+    {
+        await TagService.UpdateTagAsync(editingTag);
+        showEditModal = false;
+        await LoadTags();
+    }
+
+    private void CancelEditTag()
+    {
+        showEditModal = false;
+        editingTag = new Tag();
+    }
+
+    private void ConfirmDeleteTag(Tag tag)
+    {
+        tagToDelete = tag;
+        showDeleteConfirmation = true;
+    }
+
+    private async Task DeleteTag()
+    {
+        if (tagToDelete != null)
+        {
+            await TagService.DeleteTagAsync(tagToDelete.Id);
+            showDeleteConfirmation = false;
+            tagToDelete = null;
+            
+            if (selectedTagId == tagToDelete?.Id)
+            {
+                selectedTagId = "";
+                taggedArticles.Clear();
+            }
+            
+            await LoadTags();
+        }
+    }
+
+    private void CancelDeleteTag()
+    {
+        showDeleteConfirmation = false;
+        tagToDelete = null;
+    }
+
+    private async Task SelectTag(string tagId)
+    {
+        if (selectedTagId == tagId)
+        {
+            // Deselect the tag if it's already selected
+            selectedTagId = "";
+            taggedArticles.Clear();
+        }
+        else
+        {
+            selectedTagId = tagId;
+            taggedArticles = await TagService.GetArticlesByTagIdAsync(tagId);
+        }
+    }
+
+    private void GenerateRandomColor()
+    {
+        newTag.Color = GenerateHexColor();
+    }
+
+    private string GenerateHexColor()
+    {
+        return $"#{random.Next(0x1000000):X6}";
+    }
+}

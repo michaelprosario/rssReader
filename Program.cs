@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using rssReader.Data;
+using rssReader.Services;
+using System.Net.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +10,17 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddSingleton<WeatherForecastService>();
+
+// Register HttpClient
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<HttpClient>();
+
+// Register our custom services
+builder.Services.AddSingleton<IDataStorageService, JsonFileStorageService>();
+builder.Services.AddSingleton<ISettingsService, SettingsService>();
+builder.Services.AddSingleton<IFeedService, FeedService>();
+builder.Services.AddSingleton<IArticleService, ArticleService>();
+builder.Services.AddSingleton<ITagService, TagService>();
 
 var app = builder.Build();
 
