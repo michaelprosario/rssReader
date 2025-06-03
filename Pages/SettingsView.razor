@@ -184,11 +184,10 @@
         
         isSaving = false;
     }
-    
-    private void ShowExportConfirm()
+      private async Task ShowExportConfirm()
     {
         // For simplicity, we'll just export OPML directly
-        ExportOpml();
+        await ExportOpml();
     }
     
     private async Task ExportOpml()

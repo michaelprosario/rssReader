@@ -46,11 +46,10 @@ namespace rssReader.Services
         /// <summary>
         /// Removes a feed.
         /// </summary>
-        Task<bool> RemoveFeedAsync(string id);
-          /// <summary>
+        Task<bool> RemoveFeedAsync(string id);        /// <summary>
         /// Refreshes all feeds or a specific feed.
         /// </summary>
-        Task<int> RefreshFeedsAsync(string? feedId = null);
+        Task<int> RefreshFeedsAsync(string feedId = null);
         
         /// <summary>
         /// Imports feeds from an OPML file.

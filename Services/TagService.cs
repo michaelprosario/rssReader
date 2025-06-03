@@ -65,6 +65,11 @@ namespace rssReader.Services
         /// Gets all articles with a specific tag
         /// </summary>
         Task<List<Article>> GetArticlesByTagIdAsync(string tagId);
+        
+        /// <summary>
+        /// Gets all tags with article counts populated
+        /// </summary>
+        Task<List<Tag>> GetTagsWithCountsAsync();
     }
 
     /// <summary>
@@ -259,10 +264,8 @@ namespace rssReader.Services
             }
 
             return targetTag;
-        }
-
-        /// <inheritdoc/>
-        public async Task<List<Article>> GetArticlesByTagAsync(string tagId)
+        }        /// <inheritdoc/>
+        public async Task<List<Article>> GetArticlesByTagIdAsync(string tagId)
         {
             var tag = await GetTagByIdAsync(tagId);
             if (tag == null)
@@ -348,23 +351,8 @@ namespace rssReader.Services
         /// <inheritdoc/>
         public async Task<int> GetArticleCountByTagIdAsync(string tagId)
         {
-            var articles = await _articleService.GetArticlesAsync();
-            return articles.Count(a => a.Tags != null && a.Tags.Contains(tagId));
-        }
-
-        /// <inheritdoc/>
-        public async Task<List<Article>> GetArticlesByTagIdAsync(string tagId)
-        {
-            var tag = await GetTagByIdAsync(tagId);
-            if (tag == null)
-            {
-                throw new InvalidOperationException($"Tag with ID {tagId} not found");
-            }
-
             var allArticles = await _articleService.GetArticlesAsync();
-            return allArticles.Where(a => a.Tags != null && a.Tags.Contains(tagId))
-                .OrderByDescending(a => a.PublishDate)
-                .ToList();
+            return allArticles.Count(a => a.Tags != null && a.Tags.Contains(tagId));
         }
-    }
+      }
 }

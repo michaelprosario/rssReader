@@ -24,36 +24,34 @@
                                     <i class="oi oi-filter"></i> Filter
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="filterDropdown">
-                                    <li><h6 class="dropdown-header">Read Status</h6></li>
-                                    <li>
-                                        <button class="dropdown-item @(readFilter == "all" ? "active" : "")" @onclick="() => SetReadFilter("all")">
+                                    <li><h6 class="dropdown-header">Read Status</h6></li>                                    <li>
+                                        <button class="dropdown-item @(readFilter == "all" ? "active" : "")" @onclick='() => SetReadFilter("all")'>
                                             Show All
                                         </button>
                                     </li>
                                     <li>
-                                        <button class="dropdown-item @(readFilter == "read" ? "active" : "")" @onclick="() => SetReadFilter("read")">
+                                        <button class="dropdown-item @(readFilter == "read" ? "active" : "")" @onclick='() => SetReadFilter("read")'>
                                             Read Only
                                         </button>
                                     </li>
                                     <li>
-                                        <button class="dropdown-item @(readFilter == "unread" ? "active" : "")" @onclick="() => SetReadFilter("unread")">
+                                        <button class="dropdown-item @(readFilter == "unread" ? "active" : "")" @onclick='() => SetReadFilter("unread")'>
                                             Unread Only
                                         </button>
                                     </li>
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><h6 class="dropdown-header">Sort By</h6></li>
-                                    <li>
-                                        <button class="dropdown-item @(sortOrder == "newest" ? "active" : "")" @onclick="() => SetSortOrder("newest")">
+                                    <li><h6 class="dropdown-header">Sort By</h6></li>                                    <li>
+                                        <button class="dropdown-item @(sortOrder == "newest" ? "active" : "")" @onclick='() => SetSortOrder("newest")'>
                                             Newest First
                                         </button>
                                     </li>
                                     <li>
-                                        <button class="dropdown-item @(sortOrder == "oldest" ? "active" : "")" @onclick="() => SetSortOrder("oldest")">
+                                        <button class="dropdown-item @(sortOrder == "oldest" ? "active" : "")" @onclick='() => SetSortOrder("oldest")'>
                                             Oldest First
                                         </button>
                                     </li>
                                     <li>
-                                        <button class="dropdown-item @(sortOrder == "bookmark" ? "active" : "")" @onclick="() => SetSortOrder("bookmark")">
+                                        <button class="dropdown-item @(sortOrder == "bookmark" ? "active" : "")" @onclick='() => SetSortOrder("bookmark")'>
                                             Bookmark Date
                                         </button>
                                     </li>
