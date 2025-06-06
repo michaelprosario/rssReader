@@ -71,16 +71,16 @@ namespace AppCore.UnitTests.Services.Bookmarks
         }
 
         [Test]
-        public async Task GetByArticleIdAsync_WithInvalidId_ReturnsNull()
+        public void GetByArticleIdAsync_WithInvalidId_ThrowsArgumentException()
         {
             // Arrange
             // No setup needed
 
-            // Act
-            var result = await _bookmarkService.GetByArticleIdAsync(-1);
-
-            // Assert
-            result.Should().BeNull();
+            // Act & Assert
+            var exception = Assert.ThrowsAsync<ArgumentException>(() => 
+                _bookmarkService.GetByArticleIdAsync(-1));
+            
+            exception.Message.Should().Contain("Article ID must be greater than zero");
         }
 
         [Test]
@@ -118,19 +118,19 @@ namespace AppCore.UnitTests.Services.Bookmarks
         }
 
         [Test]
-        public async Task BookmarkArticleAsync_WithNonExistentArticle_ReturnsNull()
+        public void BookmarkArticleAsync_WithNonExistentArticle_ThrowsKeyNotFoundException()
         {
             // Arrange
             // No article with ID 1
 
-            // Act
-            var result = await _bookmarkService.BookmarkArticleAsync(1);
-
-            // Assert
-            result.Should().BeNull();
+            // Act & Assert
+            var exception = Assert.ThrowsAsync<KeyNotFoundException>(() => 
+                _bookmarkService.BookmarkArticleAsync(1));
+            
+            exception.Message.Should().Contain("Article with ID 1 not found");
 
             // Verify no bookmark was added
-            var bookmarks = await _bookmarkRepository.GetAllAsync();
+            var bookmarks = _bookmarkRepository.GetAllAsync().Result;
             bookmarks.Should().BeEmpty();
         }
 
@@ -257,18 +257,17 @@ namespace AppCore.UnitTests.Services.Bookmarks
         }
 
         [Test]
-        public async Task GetBookmarksByTagAsync_WithNonExistentTag_ReturnsEmptyList()
+        public void GetBookmarksByTagAsync_WithNonExistentTag_ThrowsKeyNotFoundException()
         {
             // Arrange
             var bookmark = new Bookmark { Id = 1, Title = "Test Bookmark" };
-            await _bookmarkRepository.AddAsync(bookmark);
+            _bookmarkRepository.AddAsync(bookmark).Wait();
 
-            // Act
-            var result = await _bookmarkService.GetBookmarksByTagAsync(999);
-
-            // Assert
-            result.Should().NotBeNull();
-            result.Should().BeEmpty();
+            // Act & Assert
+            var exception = Assert.ThrowsAsync<KeyNotFoundException>(() => 
+                _bookmarkService.GetBookmarksByTagAsync(999));
+            
+            exception.Message.Should().Contain("Tag with ID 999 not found");
         }
     }
 }
