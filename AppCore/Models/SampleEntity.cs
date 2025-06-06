@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace AppCore.Models
 {
-    public class SampleEntity
+    public class SampleEntity : IEntity
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
