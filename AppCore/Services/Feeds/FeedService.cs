@@ -1,3 +1,4 @@
+using AppCore.Models;
 using AppCore.Models.Feeds;
 using AppCore.Repositories;
 using FluentValidation;
