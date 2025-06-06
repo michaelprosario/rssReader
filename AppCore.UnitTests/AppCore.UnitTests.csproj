@@ -26,7 +26,6 @@
   <ItemGroup>
     <ProjectReference Include="..\AppCore\AppCore.csproj" />
     <ProjectReference Include="..\AppInfra\AppInfra.csproj" />
-
   </ItemGroup>
 
 
