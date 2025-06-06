@@ -1,6 +1,10 @@
 - draft the following rss reader app using blazor server
 - encapsulate business logic and data management into service classes
-- data should be stored using json files that are stored on disk.
+- service classes should depend on repository interfaces or providers
+- repositories or providers should be implemented in the AppInfrastructure project
+- Data repositories should depend on Entity Framework Core and Sqllite
+
+
 
 RSS Reader App User Stories
 Core Feed Management
