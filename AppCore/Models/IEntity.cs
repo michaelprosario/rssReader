@@ -1,3 +1,4 @@
+
 namespace AppCore.Models
 {
     /// <summary>
@@ -9,5 +10,7 @@ namespace AppCore.Models
         /// Unique identifier for the entity
         /// </summary>
         int Id { get; set; }
+        DateTime CreatedAt { get; set; }
+        DateTime? UpdatedAt { get; set; }
     }
 }

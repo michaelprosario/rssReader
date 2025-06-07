@@ -5,13 +5,8 @@ namespace AppCore.Models.Tags
     /// <summary>
     /// Join entity for the many-to-many relationship between Bookmarks and Tags
     /// </summary>
-    public class BookmarkTag : IEntity
+    public class BookmarkTag : BaseEntity
     {
-        /// <summary>
-        /// Unique identifier for the entity
-        /// </summary>
-        public int Id { get; set; }
-
         /// <summary>
         /// ID of the bookmark
         /// </summary>

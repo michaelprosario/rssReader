@@ -1,6 +1,12 @@
 - draft the following rss reader app using blazor server
-- encapsulate business logic and data management into service classes
+
+## AppCore rules
+
+- encapsulate business logic and data management into service clainsses
 - service classes should depend on repository interfaces or providers
+
+## App Infrastructure
+
 - repositories or providers should be implemented in the AppInfrastructure project
 - Data repositories should depend on Entity Framework Core and Sqllite
 
