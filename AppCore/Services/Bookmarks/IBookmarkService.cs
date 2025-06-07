@@ -15,7 +15,7 @@ namespace AppCore.Services.Bookmarks
         /// </summary>
         /// <param name="articleId">ID of the article</param>
         /// <returns>The bookmark if found, otherwise null</returns>
-        Task<Bookmark?> GetByArticleIdAsync(int articleId);
+        Task<Bookmark?> GetByArticleIdAsync(Guid articleId);
 
         /// <summary>
         /// Bookmark an article
@@ -23,7 +23,7 @@ namespace AppCore.Services.Bookmarks
         /// <param name="articleId">ID of the article to bookmark</param>
         /// <param name="notes">Optional notes for the bookmark</param>
         /// <returns>The created bookmark</returns>
-        Task<Bookmark?> BookmarkArticleAsync(int articleId, string? notes = null);
+        Task<Bookmark?> BookmarkArticleAsync(Guid articleId, string? notes = null);
 
         /// <summary>
         /// Add tags to a bookmark
@@ -31,7 +31,7 @@ namespace AppCore.Services.Bookmarks
         /// <param name="bookmarkId">ID of the bookmark</param>
         /// <param name="tagIds">IDs of the tags to add</param>
         /// <returns>The updated bookmark with tags</returns>
-        Task<Bookmark?> AddTagsToBookmarkAsync(int bookmarkId, IEnumerable<int> tagIds);
+        Task<Bookmark?> AddTagsToBookmarkAsync(Guid bookmarkId, IEnumerable<Guid> tagIds);
 
         /// <summary>
         /// Remove tags from a bookmark
@@ -39,14 +39,14 @@ namespace AppCore.Services.Bookmarks
         /// <param name="bookmarkId">ID of the bookmark</param>
         /// <param name="tagIds">IDs of the tags to remove</param>
         /// <returns>The updated bookmark</returns>
-        Task<Bookmark?> RemoveTagsFromBookmarkAsync(int bookmarkId, IEnumerable<int> tagIds);
+        Task<Bookmark?> RemoveTagsFromBookmarkAsync(Guid bookmarkId, IEnumerable<Guid> tagIds);
 
         /// <summary>
         /// Get bookmarks by tag ID
         /// </summary>
         /// <param name="tagId">ID of the tag</param>
         /// <returns>Bookmarks with the specified tag</returns>
-        Task<IEnumerable<Bookmark>> GetBookmarksByTagAsync(int tagId);
+        Task<IEnumerable<Bookmark>> GetBookmarksByTagAsync(Guid tagId);
 
         /// <summary>
         /// Export a bookmark as markdown
@@ -54,6 +54,6 @@ namespace AppCore.Services.Bookmarks
         /// <param name="bookmarkId">ID of the bookmark to export</param>
         /// <param name="includeMetadata">Whether to include metadata in the export</param>
         /// <returns>The bookmark as markdown text</returns>
-        Task<string> ExportAsMarkdownAsync(int bookmarkId, bool includeMetadata = true);
+        Task<string> ExportAsMarkdownAsync(Guid bookmarkId, bool includeMetadata = true);
     }
 }

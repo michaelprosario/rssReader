@@ -78,7 +78,7 @@ namespace AppCore.Services.Tags
         {
             // Get all tags
             var allTags = await _repository.GetAllAsync();
-            var tagCounts = new Dictionary<int, int>();
+            var tagCounts = new Dictionary<Guid, int>();
 
             // Count bookmarks per tag
             foreach (var tag in allTags)
@@ -111,13 +111,8 @@ namespace AppCore.Services.Tags
         /// <param name="sourceTagId">ID of the source tag</param>
         /// <param name="targetTagId">ID of the target tag</param>
         /// <returns>The merged tag</returns>
-        public async Task<Tag?> MergeTagsAsync(int sourceTagId, int targetTagId)
+        public async Task<Tag?> MergeTagsAsync(Guid sourceTagId, Guid targetTagId)
         {
-            if (sourceTagId <= 0)
-                throw new ArgumentException("Source tag ID must be greater than zero", nameof(sourceTagId));
-
-            if (targetTagId <= 0)
-                throw new ArgumentException("Target tag ID must be greater than zero", nameof(targetTagId));
 
             if (sourceTagId == targetTagId)
                 throw new ArgumentException("Source and target tags cannot be the same", nameof(targetTagId));

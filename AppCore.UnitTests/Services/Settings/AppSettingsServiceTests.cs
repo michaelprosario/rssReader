@@ -1,3 +1,4 @@
+// filepath: /workspaces/rssReader/AppCore.UnitTests/Services/Settings/AppSettingsServiceTests.cs
 using AppCore.Models.Settings;
 using AppCore.Repositories;
 using AppCore.Services.Settings;
@@ -18,7 +19,7 @@ namespace AppCore.UnitTests.Services.Settings
         private IRepository<AppSettings> _settingsRepository;
         private IValidator<AppSettings> _settingsValidator;
         private AppSettingsService _settingsService;
-        private const int DefaultSettingsId = 1;
+        private readonly Guid DefaultSettingsId = Guid.Parse("11111111-1111-1111-1111-111111111111"); // Consistent ID for settings
 
         [SetUp]
         public void Setup()
@@ -48,11 +49,11 @@ namespace AppCore.UnitTests.Services.Settings
 
             // Assert
             result.Should().NotBeNull();
-            result.Id.Should().Be(DefaultSettingsId);
+            result.Id.Should().NotBe(Guid.Empty);
             result.GlobalRefreshIntervalMinutes.Should().Be(60); // Default value
             
             // Verify settings were created in repository
-            var repoSettings = await _settingsRepository.GetByIdAsync(DefaultSettingsId);
+            var repoSettings = await _settingsRepository.GetByIdAsync(result.Id);
             repoSettings.Should().NotBeNull();
         }
 

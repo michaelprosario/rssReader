@@ -1,0 +1,254 @@
+// filepath: /workspaces/rssReader/AppCore.UnitTests/Services/Articles/ArticleServiceTests.cs
+using AppCore.Models;
+using AppCore.Models.Feeds;
+using AppCore.Repositories;
+using AppCore.Services.Articles;
+using AppCore.UnitTests.Mocks;
+using FluentAssertions;
+using FluentValidation;
+using FluentValidation.Results;
+using NSubstitute;
+using NUnit.Framework;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace AppCore.UnitTests.Services.Articles
+{
+    [TestFixture]
+    public class ArticleServiceTests
+    {
+        private IRepository<Article> _articleRepository;
+        private IRepository<Feed> _feedRepository;
+        private IValidator<Article> _articleValidator;
+        private ArticleService _articleService;
+
+        [SetUp]
+        public void Setup()
+        {
+            // Initialize repositories
+            _articleRepository = new MockRepository<Article>();
+            _feedRepository = new MockRepository<Feed>();
+            
+            // Create mock validator
+            _articleValidator = Substitute.For<IValidator<Article>>();
+            
+            // Default setup for validator - validation passes by default
+            _articleValidator.Validate(Arg.Any<Article>())
+                .Returns(new ValidationResult());
+            
+            // Create service
+            _articleService = new ArticleService(
+                _articleRepository,
+                _feedRepository,
+                _articleValidator
+            );
+        }
+
+        [Test]
+        public async Task AddAsync_ValidArticle_AddsArticle()
+        {
+            // Arrange
+            var feedId = Guid.NewGuid();
+            var article = new Article
+            {
+                Title = "Test Article",
+                FeedId = feedId,
+                Url = "https://example.com/article",
+                PublishedAt = DateTime.UtcNow
+            };
+
+            // Act
+            var result = await _articleService.AddAsync(article);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Id.Should().NotBe(Guid.Empty);
+            result.Title.Should().Be("Test Article");
+            result.FeedId.Should().Be(feedId);
+            
+            // Verify it was added to the repository
+            var savedArticle = await _articleRepository.GetByIdAsync(result.Id);
+            savedArticle.Should().NotBeNull();
+            savedArticle!.Title.Should().Be("Test Article");
+        }
+
+        [Test]
+        public void AddAsync_InvalidArticle_ThrowsValidationException()
+        {
+            // Arrange
+            var article = new Article
+            {
+                // Missing required fields like Title
+            };
+            
+            // Configure validator to fail
+            var validationFailure = new ValidationFailure("Title", "Title is required");
+            var validationResult = new ValidationResult(new[] { validationFailure });
+            _articleValidator.Validate(Arg.Any<Article>()).Returns(validationResult);
+
+            // Act & Assert
+            Func<Task> act = async () => await _articleService.AddAsync(article);
+            act.Should().ThrowAsync<ValidationException>();
+        }
+
+        [Test]
+        public async Task GetArticlesByFeedAsync_ReturnsArticlesForFeed()
+        {
+            // Arrange
+            var feedId = Guid.NewGuid();
+            
+            // Add some articles to this feed
+            var article1 = new Article { Title = "Article 1", FeedId = feedId };
+            var article2 = new Article { Title = "Article 2", FeedId = feedId };
+            await _articleRepository.AddAsync(article1);
+            await _articleRepository.AddAsync(article2);
+            
+            // Add an article to another feed
+            var otherFeedId = Guid.NewGuid();
+            var article3 = new Article { Title = "Article 3", FeedId = otherFeedId };
+            await _articleRepository.AddAsync(article3);
+            
+            // Act
+            var result = await _articleService.GetArticlesByFeedAsync(feedId);
+            
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().HaveCount(2);
+            result.All(a => a.FeedId == feedId).Should().BeTrue();
+        }
+        
+        [Test]
+        public async Task GetUnreadArticlesAsync_ReturnsUnreadArticles()
+        {
+            // Arrange
+            var feedId = Guid.NewGuid();
+            
+            // Add read and unread articles
+            var article1 = new Article { Title = "Article 1", FeedId = feedId, IsRead = false };
+            var article2 = new Article { Title = "Article 2", FeedId = feedId, IsRead = true };
+            var article3 = new Article { Title = "Article 3", FeedId = feedId, IsRead = false };
+            await _articleRepository.AddAsync(article1);
+            await _articleRepository.AddAsync(article2);
+            await _articleRepository.AddAsync(article3);
+            
+            // Act
+            var result = await _articleService.GetUnreadArticlesAsync();
+            
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().HaveCount(2); // Only unread articles
+            result.All(a => a.IsRead == false).Should().BeTrue();
+        }
+        
+        [Test]
+        public async Task MarkAsReadAsync_UnreadArticle_MarksAsRead()
+        {
+            // Arrange
+            var article = new Article
+            {
+                Title = "Test Article",
+                IsRead = false
+            };
+            article = await _articleRepository.AddAsync(article);
+            var articleId = article.Id;
+            
+            // Act
+            var result = await _articleService.MarkAsReadAsync(articleId);
+            
+            // Assert
+            result.Should().BeTrue();
+            
+            // Verify article was updated
+            var updatedArticle = await _articleRepository.GetByIdAsync(articleId);
+            updatedArticle.Should().NotBeNull();
+            updatedArticle!.IsRead.Should().BeTrue();
+        }
+        
+        [Test]
+        public async Task MarkAsUnreadAsync_ReadArticle_MarksAsUnread()
+        {
+            // Arrange
+            var article = new Article
+            {
+                Title = "Test Article",
+                IsRead = true
+            };
+            article = await _articleRepository.AddAsync(article);
+            var articleId = article.Id;
+            
+            // Act
+            var result = await _articleService.MarkAsUnreadAsync(articleId);
+            
+            // Assert
+            result.Should().BeTrue();
+            
+            // Verify article was updated
+            var updatedArticle = await _articleRepository.GetByIdAsync(articleId);
+            updatedArticle.Should().NotBeNull();
+            updatedArticle!.IsRead.Should().BeFalse();
+        }
+        
+        [Test]
+        public async Task MarkAllAsReadForFeedAsync_WithUnreadArticles_MarksAllAsRead()
+        {
+            // Arrange
+            var feedId = Guid.NewGuid();
+            
+            // Add some unread articles to this feed
+            var article1 = new Article { Title = "Article 1", FeedId = feedId, IsRead = false };
+            var article2 = new Article { Title = "Article 2", FeedId = feedId, IsRead = false };
+            await _articleRepository.AddAsync(article1);
+            await _articleRepository.AddAsync(article2);
+            
+            // Act
+            var result = await _articleService.MarkAllAsReadForFeedAsync(feedId);
+            
+            // Assert
+            result.Should().Be(2); // Two articles marked as read
+            
+            // Verify articles are marked as read
+            var articles = await _articleRepository.FindAsync(a => a.FeedId == feedId);
+            articles.All(a => a.IsRead).Should().BeTrue();
+        }
+        
+        [Test]
+        public async Task SearchArticlesAsync_WithMatchingTerm_ReturnsMatchingArticles()
+        {
+            // Arrange
+            var article1 = new Article { Title = "How to use C# effectively", Content = "C# programming tips" };
+            var article2 = new Article { Title = "Python for beginners", Content = "Learn Python programming" };
+            var article3 = new Article { Title = "Advanced C# techniques", Content = "More C# tips" };
+            
+            await _articleRepository.AddAsync(article1);
+            await _articleRepository.AddAsync(article2);
+            await _articleRepository.AddAsync(article3);
+            
+            // Act
+            var result = await _articleService.SearchArticlesAsync("C#");
+            
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().HaveCount(2); // Two articles mention C#
+            result.Any(a => a.Title.Contains("C#")).Should().BeTrue();
+        }
+        
+        [Test]
+        public async Task SearchArticlesAsync_WithNoMatches_ReturnsEmptyList()
+        {
+            // Arrange
+            var article1 = new Article { Title = "How to use C# effectively", Content = "C# programming tips" };
+            var article2 = new Article { Title = "Python for beginners", Content = "Learn Python programming" };
+            
+            await _articleRepository.AddAsync(article1);
+            await _articleRepository.AddAsync(article2);
+            
+            // Act
+            var result = await _articleService.SearchArticlesAsync("JavaScript");
+            
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().BeEmpty(); // No articles mention JavaScript
+        }
+    }
+}

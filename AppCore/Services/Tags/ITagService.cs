@@ -37,7 +37,7 @@ namespace AppCore.Services.Tags
         /// <param name="sourceTagId">ID of the source tag</param>
         /// <param name="targetTagId">ID of the target tag</param>
         /// <returns>The merged tag</returns>
-        Task<Tag?> MergeTagsAsync(int sourceTagId, int targetTagId);
+        Task<Tag?> MergeTagsAsync(Guid sourceTagId, Guid targetTagId);
 
         /// <summary>
         /// Get tags that match a partial name

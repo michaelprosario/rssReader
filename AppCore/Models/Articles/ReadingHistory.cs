@@ -10,7 +10,7 @@ namespace AppCore.Models
         /// <summary>
         /// ID of the article that was read
         /// </summary>
-        public int ArticleId { get; set; }
+        public Guid ArticleId { get; set; }
 
         /// <summary>
         /// Article that was read

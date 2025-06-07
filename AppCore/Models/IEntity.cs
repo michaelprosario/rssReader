@@ -9,7 +9,7 @@ namespace AppCore.Models
         /// <summary>
         /// Unique identifier for the entity
         /// </summary>
-        int Id { get; set; }
+        Guid Id { get; set; }
         DateTime CreatedAt { get; set; }
         DateTime? UpdatedAt { get; set; }
     }

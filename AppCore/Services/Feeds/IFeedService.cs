@@ -27,7 +27,7 @@ namespace AppCore.Services.Feeds
         /// </summary>
         /// <param name="feedId">The ID of the feed to refresh</param>
         /// <returns>The refreshed feed</returns>
-        Task<Feed?> RefreshFeedAsync(int feedId);
+        Task<Feed?> RefreshFeedAsync(Guid feedId);
 
         /// <summary>
         /// Refresh all feeds
@@ -41,13 +41,13 @@ namespace AppCore.Services.Feeds
         /// <param name="feedId">The feed ID</param>
         /// <param name="refreshIntervalMinutes">The new refresh interval in minutes</param>
         /// <returns>The updated feed</returns>
-        Task<Feed?> UpdateRefreshIntervalAsync(int feedId, int? refreshIntervalMinutes);
+        Task<Feed?> UpdateRefreshIntervalAsync(Guid feedId, int? refreshIntervalMinutes);
 
         /// <summary>
         /// Mark all articles in a feed as read
         /// </summary>
         /// <param name="feedId">The feed ID</param>
         /// <returns>Number of articles marked as read</returns>
-        Task<int> MarkAllArticlesAsReadAsync(int feedId);
+        Task<int> MarkAllArticlesAsReadAsync(Guid feedId);
     }
 }

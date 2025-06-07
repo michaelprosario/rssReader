@@ -46,11 +46,8 @@ namespace AppCore.Services.Bookmarks
         /// </summary>
         /// <param name="articleId">ID of the article</param>
         /// <returns>The bookmark if found, otherwise null</returns>
-        public async Task<Bookmark?> GetByArticleIdAsync(int articleId)
+        public async Task<Bookmark?> GetByArticleIdAsync(Guid articleId)
         {
-            if (articleId <= 0)
-                throw new ArgumentException("Article ID must be greater than zero", nameof(articleId));
-
             var bookmarks = await _repository.FindAsync(b => b.ArticleId == articleId);
             return bookmarks.FirstOrDefault();
         }
@@ -61,10 +58,8 @@ namespace AppCore.Services.Bookmarks
         /// <param name="articleId">ID of the article to bookmark</param>
         /// <param name="notes">Optional notes for the bookmark</param>
         /// <returns>The created bookmark</returns>
-        public async Task<Bookmark?> BookmarkArticleAsync(int articleId, string? notes = null)
+        public async Task<Bookmark?> BookmarkArticleAsync(Guid articleId, string? notes = null)
         {
-            if (articleId <= 0)
-                throw new ArgumentException("Article ID must be greater than zero", nameof(articleId));
 
             // Check if article exists
             var article = await _articleRepository.GetByIdAsync(articleId);
@@ -94,10 +89,8 @@ namespace AppCore.Services.Bookmarks
         /// <param name="bookmarkId">ID of the bookmark</param>
         /// <param name="tagIds">IDs of the tags to add</param>
         /// <returns>The updated bookmark with tags</returns>
-        public async Task<Bookmark?> AddTagsToBookmarkAsync(int bookmarkId, IEnumerable<int> tagIds)
+        public async Task<Bookmark?> AddTagsToBookmarkAsync(Guid bookmarkId, IEnumerable<Guid> tagIds)
         {
-            if (bookmarkId <= 0)
-                throw new ArgumentException("Bookmark ID must be greater than zero", nameof(bookmarkId));
 
             var bookmark = await _repository.GetByIdAsync(bookmarkId);
             if (bookmark == null)
@@ -135,11 +128,8 @@ namespace AppCore.Services.Bookmarks
         /// <param name="bookmarkId">ID of the bookmark</param>
         /// <param name="tagIds">IDs of the tags to remove</param>
         /// <returns>The updated bookmark</returns>
-        public async Task<Bookmark?> RemoveTagsFromBookmarkAsync(int bookmarkId, IEnumerable<int> tagIds)
+        public async Task<Bookmark?> RemoveTagsFromBookmarkAsync(Guid bookmarkId, IEnumerable<Guid> tagIds)
         {
-            if (bookmarkId <= 0)
-                throw new ArgumentException("Bookmark ID must be greater than zero", nameof(bookmarkId));
-
             var bookmark = await _repository.GetByIdAsync(bookmarkId);
             if (bookmark == null)
                 return null;
@@ -163,10 +153,8 @@ namespace AppCore.Services.Bookmarks
         /// </summary>
         /// <param name="tagId">ID of the tag</param>
         /// <returns>Bookmarks with the specified tag</returns>
-        public async Task<IEnumerable<Bookmark>> GetBookmarksByTagAsync(int tagId)
+        public async Task<IEnumerable<Bookmark>> GetBookmarksByTagAsync(Guid tagId)
         {
-            if (tagId <= 0)
-                throw new ArgumentException("Tag ID must be greater than zero", nameof(tagId));
 
             // Check if tag exists
             var tag = await _tagRepository.GetByIdAsync(tagId);
@@ -198,7 +186,7 @@ namespace AppCore.Services.Bookmarks
         /// <param name="bookmarkId">ID of the bookmark to export</param>
         /// <param name="includeMetadata">Whether to include metadata in the export</param>
         /// <returns>The bookmark as markdown text</returns>
-        public async Task<string> ExportAsMarkdownAsync(int bookmarkId, bool includeMetadata = true)
+        public async Task<string> ExportAsMarkdownAsync(Guid bookmarkId, bool includeMetadata = true)
         {
             var bookmark = await _repository.GetByIdAsync(bookmarkId);
             if (bookmark == null)

@@ -45,11 +45,8 @@ namespace AppCore.Services.Articles
         /// </summary>
         /// <param name="feedId">ID of the feed</param>
         /// <returns>Articles for the specified feed</returns>
-        public async Task<IEnumerable<Article>> GetArticlesByFeedAsync(int feedId)
+        public async Task<IEnumerable<Article>> GetArticlesByFeedAsync(Guid feedId)
         {
-            if (feedId <= 0)
-                throw new ArgumentException("Feed ID must be greater than zero", nameof(feedId));
-
             // Verify the feed exists
             var feedExists = await _feedRepository.ExistsAsync(f => f.Id == feedId);
             if (!feedExists)
@@ -63,7 +60,7 @@ namespace AppCore.Services.Articles
         /// </summary>
         /// <param name="articleId">ID of the article</param>
         /// <returns>The updated article</returns>
-        public async Task<Article?> MarkAsReadAsync(int articleId)
+        public async Task<Article?> MarkAsReadAsync(Guid articleId)
         {
             var article = await _repository.GetByIdAsync(articleId);
             if (article == null)
@@ -93,7 +90,7 @@ namespace AppCore.Services.Articles
         /// </summary>
         /// <param name="articleId">ID of the article</param>
         /// <returns>The updated article</returns>
-        public async Task<Article?> MarkAsUnreadAsync(int articleId)
+        public async Task<Article?> MarkAsUnreadAsync(Guid articleId)
         {
             var article = await _repository.GetByIdAsync(articleId);
             if (article == null)
@@ -123,7 +120,7 @@ namespace AppCore.Services.Articles
         /// </summary>
         /// <param name="articleId">ID of the article</param>
         /// <returns>Article with full content</returns>
-        public async Task<Article?> FetchFullContentAsync(int articleId)
+        public async Task<Article?> FetchFullContentAsync(Guid articleId)
         {
             var article = await _repository.GetByIdAsync(articleId);
             if (article == null)
@@ -149,7 +146,7 @@ namespace AppCore.Services.Articles
         /// <param name="searchText">Text to search for</param>
         /// <param name="feedId">Optional feed ID to limit search scope</param>
         /// <returns>Articles that match the search criteria</returns>
-        public async Task<IEnumerable<Article>> SearchArticlesAsync(string searchText, int? feedId = null)
+        public async Task<IEnumerable<Article>> SearchArticlesAsync(string searchText, Guid? feedId = null)
         {
             if (string.IsNullOrWhiteSpace(searchText))
                 throw new ArgumentException("Search text cannot be empty", nameof(searchText));

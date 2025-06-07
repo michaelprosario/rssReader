@@ -244,6 +244,26 @@ namespace AppCore.UnitTests.Services.Tags
                 
             exception.Message.Should().Contain("Source and target tags cannot be the same");
         }
+
+        [Test]
+        public void MergeTagsAsync_WithInvalidSourceId_ThrowsArgumentException()
+        {
+            // Act & Assert
+            var exception = Assert.ThrowsAsync<ArgumentException>(() => 
+                _tagService.MergeTagsAsync(Guid.Empty, Guid.NewGuid()));
+                
+            exception.Message.Should().Contain("Source tag ID");
+        }
+
+        [Test]
+        public void MergeTagsAsync_WithInvalidTargetId_ThrowsArgumentException()
+        {
+            // Act & Assert
+            var exception = Assert.ThrowsAsync<ArgumentException>(() => 
+                _tagService.MergeTagsAsync(Guid.NewGuid(), Guid.Empty));
+                
+            exception.Message.Should().Contain("Target tag ID");
+        }
         
         [Test]
         public async Task MergeTagsAsync_MergesTagsSuccessfully()

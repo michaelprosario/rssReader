@@ -22,7 +22,7 @@ namespace AppCore.Models.Bookmarks
         /// <summary>
         /// ID of the article that is bookmarked
         /// </summary>
-        public int ArticleId { get; set; }
+        public Guid ArticleId { get; set; }
 
         /// <summary>
         /// Article that is bookmarked
