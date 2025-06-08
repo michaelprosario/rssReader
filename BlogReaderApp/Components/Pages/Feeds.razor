@@ -11,41 +11,6 @@
 
 <h1>Feed Management</h1>
 
-<div class="row mb-4">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5>Add New Feed</h5>
-            </div>
-            <div class="card-body">
-                <EditForm Model="@newFeed" OnValidSubmit="AddFeedAsync" FormName="addFeedForm">
-                    <DataAnnotationsValidator />
-                    <ValidationSummary />
-
-                    <div class="form-group mb-3">
-                        <label for="feedUrl">Feed URL</label>
-                        <InputText id="feedUrl" @bind-Value="newFeed.FeedUrl" class="form-control" placeholder="Enter RSS, Atom, or JSON feed URL" />
-                        <div class="text-muted small mt-1">Paste the direct URL of the feed (e.g., https://example.com/feed.xml)</div>
-                        <ValidationMessage For="@(() => newFeed.FeedUrl)" />
-                    </div>
-
-                    <button type="submit" class="btn btn-primary" disabled="@isProcessing">
-                        @if (isProcessing)
-                        {
-                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                            <span> Processing...</span>
-                        }
-                        else
-                        {
-                            <span>Add Feed</span>
-                        }
-                    </button>
-                </EditForm>
-            </div>
-        </div>
-    </div>
-</div>
-
 @if (isLoading)
 {
     <div class="d-flex justify-content-center">
@@ -70,10 +35,13 @@ else
                 <div class="col-md-4 mb-4">
                     <div class="card h-100">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0 text-truncate" title="@feed.Title">@feed.Title</h5>
-                            <button class="btn btn-sm btn-danger" @onclick="() => ConfirmDeleteFeed(feed)">
-                                <i class="bi bi-trash"></i>
-                            </button>
+                            <h5 class="mb-0 text-truncate" title="@feed.Title">
+                                <a href="@($"/edit-feed/{feed.Id}")">
+                                    @feed.Title
+                                </a>
+
+                            </h5>
+
                         </div>
                         <div class="card-body">
                             @if (!string.IsNullOrEmpty(feed.ImageUrl))
