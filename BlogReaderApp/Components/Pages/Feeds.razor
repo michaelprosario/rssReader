@@ -1,0 +1,262 @@
+@page "/feeds"
+@using AppCore.Models.Feeds
+@using AppCore.Services.Feeds
+@using BlogReaderApp.Models
+@using Microsoft.AspNetCore.Components.Forms
+@using System.ComponentModel.DataAnnotations
+@inject IJSRuntime JSRuntime
+@inject IFeedService FeedService
+
+<PageTitle>Feed Management</PageTitle>
+
+<h1>Feed Management</h1>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Add New Feed</h5>
+            </div>
+            <div class="card-body">
+                <EditForm Model="@newFeed" OnValidSubmit="AddFeedAsync" FormName="addFeedForm">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="form-group mb-3">
+                        <label for="feedUrl">Feed URL</label>
+                        <InputText id="feedUrl" @bind-Value="newFeed.FeedUrl" class="form-control" placeholder="Enter RSS, Atom, or JSON feed URL" />
+                        <div class="text-muted small mt-1">Paste the direct URL of the feed (e.g., https://example.com/feed.xml)</div>
+                        <ValidationMessage For="@(() => newFeed.FeedUrl)" />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" disabled="@isProcessing">
+                        @if (isProcessing)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span> Processing...</span>
+                        }
+                        else
+                        {
+                            <span>Add Feed</span>
+                        }
+                    </button>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="d-flex justify-content-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    @if (feeds == null || !feeds.Any())
+    {
+        <div class="alert alert-info">
+            You haven't added any feeds yet. Start by adding a feed URL above.
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var feed in feeds)
+            {
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0 text-truncate" title="@feed.Title">@feed.Title</h5>
+                            <button class="btn btn-sm btn-danger" @onclick="() => ConfirmDeleteFeed(feed)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            @if (!string.IsNullOrEmpty(feed.ImageUrl))
+                            {
+                                <img src="@feed.ImageUrl" alt="@feed.Title" class="feed-image mb-2" />
+                            }
+                            <p class="card-text">@(string.IsNullOrEmpty(feed.Description) ? "No description available" : feed.Description)</p>
+                        </div>
+                        <div class="card-footer text-muted d-flex justify-content-between">
+                            <span>@feed.FeedType</span>
+                            <span>@(feed.UnreadCount > 0 ? $"{feed.UnreadCount} unread" : "All read")</span>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@if (showDeleteConfirm)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" @onclick="() => showDeleteConfirm = false"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to remove <strong>@feedToDelete?.Title</strong> from your subscriptions?</p>
+                    <p class="text-danger">This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => showDeleteConfirm = false">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="DeleteFeedAsync">
+                        @if (isDeleting)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span> Deleting...</span>
+                        }
+                        else
+                        {
+                            <span>Delete Feed</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Feed> feeds = new();
+    private FeedViewModel newFeed = new();
+    private bool isLoading = true;
+    private bool isProcessing = false;
+    private bool isDeleting = false;
+    private bool showDeleteConfirm = false;
+    private Feed? feedToDelete;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFeedsAsync();
+    }
+
+    private async Task LoadFeedsAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var allFeeds = await FeedService.GetAllAsync();
+            feeds = allFeeds.ToList();
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error loading feeds: {ex.Message}");
+            Console.Error.WriteLine($"Error loading feeds: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task AddFeedAsync()
+    {
+        if (string.IsNullOrWhiteSpace(newFeed.FeedUrl))
+            return;
+
+        isProcessing = true;
+        try
+        {
+            // Check if feed already exists
+            var existingFeed = await FeedService.GetByUrlAsync(newFeed.FeedUrl);
+            if (existingFeed != null)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "This feed is already in your subscriptions");
+                return;
+            }
+
+            // Create a new feed from the URL
+            Feed feed = new Feed
+            {
+                FeedUrl = newFeed.FeedUrl,
+                // Title will be updated after fetching the feed content
+                Title = "Loading...",
+                IsActive = true,
+                // Determine feed type based on URL (simplified for now)
+                FeedType = DetermineFeedType(newFeed.FeedUrl)
+            };
+
+            // Create and refresh the feed
+            var createdFeed = await FeedService.AddAsync(feed);
+            if (createdFeed != null)
+            {
+                // Try to immediately refresh the feed to get title and other metadata
+                await FeedService.RefreshFeedAsync(createdFeed.Id);
+                
+                // Reload the feeds list
+                await LoadFeedsAsync();
+                
+                // Reset the form
+                newFeed = new FeedViewModel();
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error adding feed: {ex.Message}");
+            Console.Error.WriteLine($"Error adding feed: {ex.Message}");
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private void ConfirmDeleteFeed(Feed feed)
+    {
+        feedToDelete = feed;
+        showDeleteConfirm = true;
+    }
+
+    private async Task DeleteFeedAsync()
+    {
+        if (feedToDelete == null)
+            return;
+
+        isDeleting = true;
+        try
+        {
+            await FeedService.DeleteAsync(feedToDelete.Id);
+            feeds.Remove(feedToDelete);
+            showDeleteConfirm = false;
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error deleting feed: {ex.Message}");
+            Console.Error.WriteLine($"Error deleting feed: {ex.Message}");
+        }
+        finally
+        {
+            isDeleting = false;
+            feedToDelete = null;
+        }
+    }
+
+    private FeedType DetermineFeedType(string url)
+    {
+        // A simple heuristic based on URL
+        string urlLower = url.ToLowerInvariant();
+        if (urlLower.Contains("json") || urlLower.EndsWith(".json"))
+            return FeedType.JSON;
+        else if (urlLower.Contains("atom") || urlLower.Contains("/atom/"))
+            return FeedType.Atom;
+        else
+            return FeedType.RSS; // Default to RSS
+    }
+}
+
+<style>
+    .feed-image {
+        max-height: 100px;
+        max-width: 100%;
+        object-fit: contain;
+    }
+</style>
