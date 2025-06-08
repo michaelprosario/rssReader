@@ -1,7 +1,10 @@
 using AppCore.Models.Feeds;
+using AppCore.Models.Bookmarks;
 using AppCore.Models;
 using AppCore.Repositories;
 using AppCore.Services.Feeds;
+using AppCore.Services.Articles;
+using AppCore.Services.Bookmarks;
 using AppCore.Validators;
 using AppInfra.Data;
 using AppInfra.Repositories;
@@ -27,9 +30,13 @@ builder.Services.AddScoped(typeof(IRepository<>), typeof(EfCoreRepository<>));
 
 // Register validators
 builder.Services.AddScoped<IValidator<Feed>, FeedValidator>();
+builder.Services.AddScoped<IValidator<Article>, ArticleValidator>();
+// builder.Services.AddScoped<IValidator<Bookmark>, BookmarkValidator>();
 
 // Register services
 builder.Services.AddScoped<IFeedService, FeedService>();
+builder.Services.AddScoped<IArticleService, ArticleService>();
+builder.Services.AddScoped<IBookmarkService, BookmarkService>();
 
 var app = builder.Build();
 

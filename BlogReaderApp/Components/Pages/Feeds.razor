@@ -49,6 +49,12 @@ else
                                 <img src="@feed.ImageUrl" alt="@feed.Title" class="feed-image mb-2" />
                             }
                             <p class="card-text">@(string.IsNullOrEmpty(feed.Description) ? "No description available" : feed.Description)</p>
+
+                            <a href="@($"/view-feed-posts/{feed.Id}")">
+                                View posts
+                            </a>
+
+
                         </div>
                         <div class="card-footer text-muted d-flex justify-content-between">
                             <span>@feed.FeedType</span>
