@@ -12,12 +12,14 @@ using BlogReaderApp.Components;
 using BlogReaderApp.Data;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Sagara.FeedReader.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddFeedReaderServices();
 
 // Add DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -29,7 +31,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped(typeof(IRepository<>), typeof(EfCoreRepository<>));
 
 // Register validators
-builder.Services.AddScoped<IValidator<Feed>, FeedValidator>();
+builder.Services.AddScoped<IValidator<AppCore.Models.Feeds.Feed>, FeedValidator>();
 builder.Services.AddScoped<IValidator<Article>, ArticleValidator>();
 // builder.Services.AddScoped<IValidator<Bookmark>, BookmarkValidator>();
 
@@ -37,6 +39,13 @@ builder.Services.AddScoped<IValidator<Article>, ArticleValidator>();
 builder.Services.AddScoped<IFeedService, FeedService>();
 builder.Services.AddScoped<IArticleService, ArticleService>();
 builder.Services.AddScoped<IBookmarkService, BookmarkService>();
+
+// IBlogReaderProvider -> BlogReaderProvider
+builder.Services.AddScoped<IBlogReaderProvider, BlogReaderProvider>();
+
+// ArticleService2 -> IArticleService2
+builder.Services.AddScoped<IArticleService2, ArticleService2>();
+
 
 var app = builder.Build();
 

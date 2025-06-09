@@ -7,6 +7,7 @@
 @inject IFeedService FeedService
 @inject IBookmarkService BookmarkService
 @inject IArticleService ArticleService
+@inject IArticleService2 ArticleService2
 @inject NavigationManager NavigationManager
 @rendermode InteractiveServer
 
@@ -275,9 +276,11 @@
         try
         {
             // todo - fix case of showing only unread articles
-            articles = showOnlyUnread
-                ? (await ArticleService.GetArticlesByFeedAsync(feed.Id)).ToList()
-                : (await ArticleService.GetArticlesByFeedAsync(feed.Id)).ToList();
+            //articles = showOnlyUnread
+            //    ? (await ArticleService.GetArticlesByFeedAsync(feed.Id)).ToList()
+            //    : (await ArticleService.GetArticlesByFeedAsync(feed.Id)).ToList();
+
+            articles = await ArticleService2.GetArticlesFromFeedAsync(feed.Id, 30);
         }
         catch (Exception ex)
         {
