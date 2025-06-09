@@ -50,7 +50,7 @@ namespace AppInfra.Repositories
                 var contentItem = new Article
                 {
                     Title = item.Title,
-                    Content = item.Description,
+                    Summary = item.Description,
                     Author = "",
                     PublishedAt = item.PublishingDate != null ? (DateTime)item.PublishingDate : DateTime.Now,
                     Url = item.Link,

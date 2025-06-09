@@ -124,56 +124,17 @@
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <h4 class="card-title">
-                                        <a href="/article/@article.Id" class="@(!article.IsRead ? "fw-bold" : "")">
+                                        <a href="@article.Url" target="_blank">
                                             @article.Title
                                         </a>
                                     </h4>
-                                    <div class="dropdown">
-                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                            <i class="bi bi-three-dots-vertical"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end">
-                                            <li>
-                                                <button class="dropdown-item" @onclick="() => ToggleReadStatus(article)">
-                                                    @if (article.IsRead)
-                                                    {
-                                                        <span>
-                                                        <i class="bi bi-circle"></i> Mark as Unread
-                                                        </span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span>
-                                                        <i class="bi bi-check-circle"></i> Mark as Read
-                                                        </span>
-                                                    }
-                                                </button>
-                                            </li>
-                                            <li>
-                                                <button class="dropdown-item" @onclick="() => BookmarkArticle(article)">
-                                                    <i class="bi bi-bookmark"></i> Bookmark
-                                                </button>
-                                            </li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <a class="dropdown-item" href="@article.Url" target="_blank" rel="noopener noreferrer">
-                                                    <i class="bi bi-box-arrow-up-right"></i> Open Original
-                                                </a>
-                                            </li>
-                                        </ul>
-                                    </div>
                                 </div>
 
                                 <div class="d-flex align-items-center mb-2 text-muted small">
                                     <div class="me-3">
                                         <i class="bi bi-calendar"></i> @article.PublishedAt.ToString("MMM d, yyyy")
                                     </div>
-                                    @if (article.Author != null)
-                                    {
-                                        <div>
-                                            <i class="bi bi-person"></i> @article.Author
-                                        </div>
-                                    }
+                                    
                                 </div>
 
                                 @if (!string.IsNullOrEmpty(article.Summary))
@@ -181,15 +142,7 @@
                                     <p class="card-text">@((MarkupString)article.Summary)</p>
                                 }
 
-                                <div class="d-flex justify-content-between align-items-center mt-3">
-                                    <a href="/article/@article.Id" class="btn btn-sm btn-primary">
-                                        Read More
-                                    </a>
-                                    @if (!article.IsRead)
-                                    {
-                                        <span class="badge bg-success">Unread</span>
-                                    }
-                                </div>
+                                
                             </div>
                         </div>
                     </div>
