@@ -29,7 +29,7 @@ namespace AppCore.Services.Feeds
         /// </summary>
         /// <param name="operationId">ID of the operation</param>
         /// <returns>The OPML operation</returns>
-        Task<OpmlOperation?> GetOperationAsync(int operationId);
+        Task<OpmlOperation?> GetOperationAsync(Guid operationId);
 
         /// <summary>
         /// Get recent OPML operations
@@ -43,6 +43,6 @@ namespace AppCore.Services.Feeds
         /// </summary>
         /// <param name="operationId">ID of the operation to cancel</param>
         /// <returns>The canceled operation</returns>
-        Task<OpmlOperation?> CancelOperationAsync(int operationId);
+        Task<OpmlOperation?> CancelOperationAsync(Guid operationId);
     }
 }

@@ -41,7 +41,7 @@ namespace AppCore.Repositories
         /// </summary>
         /// <param name="id">Id of the entity to delete</param>
         /// <returns>True if deleted, false if not found</returns>
-        public abstract Task<bool> DeleteAsync(int id);
+        public abstract Task<bool> DeleteAsync(Guid id);
 
         /// <summary>
         /// Delete an entity
@@ -82,7 +82,7 @@ namespace AppCore.Repositories
         /// </summary>
         /// <param name="id">Entity Id</param>
         /// <returns>Entity if found, otherwise null</returns>
-        public abstract Task<T?> GetByIdAsync(int id);
+        public abstract Task<T?> GetByIdAsync(Guid id);
 
         /// <summary>
         /// Update an existing entity

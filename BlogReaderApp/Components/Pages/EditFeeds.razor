@@ -1,0 +1,273 @@
+@page "/edit-feed"
+@page "/edit-feed/{id}"
+@inject IFeedService FeedService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@using AppCore.Models.Feeds
+@using AppCore.Services.Feeds
+@using BlogReaderApp.Models
+
+@rendermode InteractiveServer
+
+<PageTitle>@(IsNewFeed ? "Add Feed" : "Edit Feed")</PageTitle>
+
+<div class="container mt-4">
+    <h1>@(IsNewFeed ? "Add New Feed" : "Edit Feed")</h1>
+
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <form @onsubmit="SaveFeed">
+                    <div class="mb-3">
+                        <label for="feedUrl" class="form-label">Feed URL <span class="text-danger">*</span></label>
+                        <input type="url" class="form-control @(feedUrlError ? "is-invalid" : "")" id="feedUrl" 
+                               @bind="feed.FeedUrl" @bind:event="oninput" @onchange="HandleUrlChanged" required />
+                        @if (feedUrlError)
+                        {
+                            <div class="invalid-feedback">
+                                Valid feed URL is required.
+                            </div>
+                        }
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control @(titleError ? "is-invalid" : "")" id="title" 
+                               @bind="feed.Title" @bind:event="oninput" required />
+                        @if (titleError)
+                        {
+                            <div class="invalid-feedback">
+                                Title is required.
+                            </div>
+                        }
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="websiteUrl" class="form-label">Website URL</label>
+                        <input type="url" class="form-control" id="websiteUrl" @bind="feed.WebsiteUrl" />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" rows="3" @bind="feed.Description"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="feedType" class="form-label">Feed Type</label>
+                        <select class="form-select" id="feedType" @bind="feed.FeedType">
+                            <option value="@FeedType.RSS">RSS</option>
+                            <option value="@FeedType.Atom">Atom</option>
+                            <option value="@FeedType.JSON">JSON</option>
+                        </select>
+                    </div>
+                    
+
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="isActive" @bind="feed.IsActive" />
+                        <label class="form-check-label" for="isActive">
+                            Feed is active
+                        </label>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-secondary" @onclick="NavigateBack">Cancel</button>
+                        <div>
+                            @if (!IsNewFeed)
+                            {
+                                <button type="button" class="btn btn-danger me-2" @onclick="ConfirmDelete">Delete</button>
+                            }
+                            <button type="button" class="btn btn-primary" @onclick="SaveFeed">Save</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        @if (showDeleteConfirmation)
+        {
+            <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Confirm Delete</h5>
+                            <button type="button" class="btn-close" @onclick="CancelDelete"></button>
+                        </div>
+                        <div class="modal-body">
+                            Are you sure you want to delete the feed <strong>@feed.Title</strong>? This action cannot be undone.
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+                            <button type="button" class="btn btn-danger" @onclick="DeleteFeed">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-3">
+                @errorMessage
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string? Id { get; set; }
+
+    private Feed feed = new Feed();
+    private bool isLoading = true;
+    private bool showDeleteConfirmation = false;
+    private string errorMessage = string.Empty;
+    
+    // Form validation
+    private bool feedUrlError = false;
+    private bool titleError = false;
+
+    private bool IsNewFeed => string.IsNullOrEmpty(Id);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!IsNewFeed && Guid.TryParse(Id, out Guid feedId))
+        {
+            try
+            {
+                var existingFeed = await FeedService.GetByIdAsync(feedId);
+                if (existingFeed != null)
+                {
+                    feed = existingFeed;
+                }
+                else
+                {
+                    errorMessage = "Feed not found.";
+                    feed = new Feed();
+                }
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error loading feed: {ex.Message}";
+                feed = new Feed();
+            }
+        }
+        
+        isLoading = false;
+    }
+
+    private async Task SaveFeed()
+    {
+        // Reset validation errors
+        feedUrlError = string.IsNullOrEmpty(feed.FeedUrl);
+        titleError = string.IsNullOrEmpty(feed.Title);
+
+        // set image url
+        feed.ImageUrl = "";
+        feed.RefreshIntervalMinutes = 60;
+
+        // Check if there are any validation errors
+        if (feedUrlError || titleError)
+        {
+            return;
+        }
+        
+        try
+        {
+            if (IsNewFeed)
+            {
+                await FeedService.AddAsync(feed);
+                
+                // alert user that feed was added
+                await JSRuntime.InvokeVoidAsync("alert", "Feed added successfully!");
+            }
+            else
+            {
+                await FeedService.UpdateAsync(feed);
+            }
+            
+            NavigateBack();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving feed: {ex.Message}";
+        }
+    }
+    
+    private async Task DeleteFeed()
+    {
+        try
+        {
+            await FeedService.DeleteAsync(feed.Id);
+            showDeleteConfirmation = false;
+            NavigateBack();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting feed: {ex.Message}";
+            showDeleteConfirmation = false;
+        }
+    }
+    
+    private void ConfirmDelete()
+    {
+        showDeleteConfirmation = true;
+    }
+    
+    private void CancelDelete()
+    {
+        showDeleteConfirmation = false;
+    }
+    
+    private void NavigateBack()
+    {
+        NavigationManager.NavigateTo("/feeds");
+    }
+    
+    private void HandleUrlChanged()
+    {
+        feedUrlError = string.IsNullOrEmpty(feed.FeedUrl);
+        
+        if (!feedUrlError && string.IsNullOrEmpty(feed.Title))
+        {
+            // Try to generate a title from the URL
+            try
+            {
+                var uri = new Uri(feed.FeedUrl);
+                feed.Title = uri.Host.Replace("www.", "");
+            }
+            catch
+            {
+                // If URL parsing fails, don't generate a title
+            }
+        }
+        
+        // Try to auto-detect feed type if not already set
+        if (!feedUrlError)
+        {
+            var url = feed.FeedUrl.ToLower();
+            
+            if (url.Contains("atom") || url.EndsWith(".atom"))
+            {
+                feed.FeedType = FeedType.Atom;
+            }
+            else if (url.Contains("json") || url.EndsWith(".json"))
+            {
+                feed.FeedType = FeedType.JSON;
+            }
+            else
+            {
+                feed.FeedType = FeedType.RSS; // Default to RSS
+            }
+        }
+    }
+}

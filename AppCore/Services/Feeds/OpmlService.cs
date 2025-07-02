@@ -184,11 +184,8 @@ namespace AppCore.Services.Feeds
         /// </summary>
         /// <param name="operationId">ID of the operation</param>
         /// <returns>The OPML operation</returns>
-        public async Task<OpmlOperation?> GetOperationAsync(int operationId)
+        public async Task<OpmlOperation?> GetOperationAsync(Guid operationId)
         {
-            if (operationId <= 0)
-                throw new ArgumentException("Operation ID must be greater than zero", nameof(operationId));
-
             return await _operationRepository.GetByIdAsync(operationId);
         }
 
@@ -211,11 +208,8 @@ namespace AppCore.Services.Feeds
         /// </summary>
         /// <param name="operationId">ID of the operation to cancel</param>
         /// <returns>The canceled operation</returns>
-        public async Task<OpmlOperation?> CancelOperationAsync(int operationId)
+        public async Task<OpmlOperation?> CancelOperationAsync(Guid operationId)
         {
-            if (operationId <= 0)
-                throw new ArgumentException("Operation ID must be greater than zero", nameof(operationId));
-
             var operation = await _operationRepository.GetByIdAsync(operationId);
             if (operation == null)
                 return null;

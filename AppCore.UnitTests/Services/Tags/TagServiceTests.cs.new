@@ -1,0 +1,378 @@
+// filepath: /workspaces/rssReader/AppCore.UnitTests/Services/Tags/TagServiceTests.cs
+using AppCore.Models.Tags;
+using AppCore.Repositories;
+using AppCore.Services.Tags;
+using AppCore.UnitTests.Mocks;
+using FluentAssertions;
+using FluentValidation;
+using FluentValidation.Results;
+using NSubstitute;
+using NUnit.Framework;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Threading.Tasks;
+
+namespace AppCore.UnitTests.Services.Tags
+{
+    [TestFixture]
+    public class TagServiceTests
+    {
+        private IRepository<Tag> _tagRepository;
+        private IRepository<BookmarkTag> _bookmarkTagRepository;
+        private IValidator<Tag> _tagValidator;
+        private TagService _tagService;
+
+        [SetUp]
+        public void Setup()
+        {
+            // Initialize repositories
+            _tagRepository = new MockRepository<Tag>();
+            _bookmarkTagRepository = new MockRepository<BookmarkTag>();
+            
+            // Create mock validator
+            _tagValidator = Substitute.For<IValidator<Tag>>();
+            
+            // Default setup for validator - validation passes by default
+            _tagValidator.Validate(Arg.Any<Tag>())
+                .Returns(new ValidationResult());
+            
+            // Create service
+            _tagService = new TagService(_tagRepository, _bookmarkTagRepository, _tagValidator);
+        }
+
+        [Test]
+        public async Task GetByNameAsync_WithValidName_ReturnsTag()
+        {
+            // Arrange
+            var tag = new Tag { Name = "Technology", Color = "#FF5733" };
+            await _tagRepository.AddAsync(tag);
+
+            // Act
+            var result = await _tagService.GetByNameAsync("Technology");
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.Name.Should().Be("Technology");
+            result.Color.Should().Be("#FF5733");
+        }
+
+        [Test]
+        public async Task GetByNameAsync_WithNonExistentName_ReturnsNull()
+        {
+            // Arrange
+            // No tag with name "NonExistent"
+            
+            // Act
+            var result = await _tagService.GetByNameAsync("NonExistent");
+
+            // Assert
+            result.Should().BeNull();
+        }
+
+        [Test]
+        public void GetByNameAsync_WithNullOrEmptyName_ThrowsArgumentException()
+        {
+            // Arrange
+            
+            // Act & Assert
+            Assert.ThrowsAsync<ArgumentException>(() => _tagService.GetByNameAsync(null!));
+            Assert.ThrowsAsync<ArgumentException>(() => _tagService.GetByNameAsync(""));
+            Assert.ThrowsAsync<ArgumentException>(() => _tagService.GetByNameAsync("  "));
+        }
+
+        [Test]
+        public async Task GetByNameAsync_IsCaseInsensitive()
+        {
+            // Arrange
+            var tag = new Tag { Name = "Technology", Color = "#FF5733" };
+            await _tagRepository.AddAsync(tag);
+
+            // Act
+            var result = await _tagService.GetByNameAsync("technology");
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.Name.Should().Be("Technology");
+        }
+
+        [Test]
+        public async Task GetOrCreateTagAsync_WithExistingTag_ReturnsExistingTag()
+        {
+            // Arrange
+            var tag = new Tag { Name = "Existing", Color = "#FF5733" };
+            await _tagRepository.AddAsync(tag);
+
+            // Act
+            var result = await _tagService.GetOrCreateTagAsync("Existing", "#00FF00");
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Id.Should().Be(tag.Id);
+            result.Name.Should().Be("Existing");
+            result.Color.Should().Be("#FF5733"); // Color should not be updated
+            
+            // Verify no new tag was created
+            var allTags = await _tagRepository.GetAllAsync();
+            allTags.Should().HaveCount(1);
+        }
+
+        [Test]
+        public async Task GetOrCreateTagAsync_WithNewTag_CreatesNewTag()
+        {
+            // Arrange
+            // No tags initially
+            
+            // Act
+            var result = await _tagService.GetOrCreateTagAsync("New Tag", "#00FF00");
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Name.Should().Be("New Tag");
+            result.Color.Should().Be("#00FF00");
+            
+            // Verify new tag was created
+            var allTags = await _tagRepository.GetAllAsync();
+            allTags.Should().HaveCount(1);
+            allTags.First().Name.Should().Be("New Tag");
+        }
+
+        [Test]
+        public async Task GetOrCreateTagAsync_WithNewTagNoColor_CreatesNewTagWithDefaultColor()
+        {
+            // Arrange
+            // No tags initially
+            
+            // Act
+            var result = await _tagService.GetOrCreateTagAsync("New Tag");
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Name.Should().Be("New Tag");
+            result.Color.Should().Be("#808080"); // Default color
+        }
+
+        [Test]
+        public async Task GetMostUsedTagsAsync_ReturnsTagsSortedByUsageCount()
+        {
+            // Arrange
+            var guid1 = Guid.NewGuid();
+            var guid2 = Guid.NewGuid();
+            var guid3 = Guid.NewGuid();
+            
+            var tag1 = new Tag { Id = guid1, Name = "Tag1" };
+            var tag2 = new Tag { Id = guid2, Name = "Tag2" };
+            var tag3 = new Tag { Id = guid3, Name = "Tag3" };
+            
+            await _tagRepository.AddAsync(tag1);
+            await _tagRepository.AddAsync(tag2);
+            await _tagRepository.AddAsync(tag3);
+
+            // Tag1 has 3 bookmarks, Tag2 has 1 bookmark, Tag3 has 2 bookmarks
+            var bookmarkId1 = Guid.NewGuid();
+            var bookmarkId2 = Guid.NewGuid();
+            var bookmarkId3 = Guid.NewGuid();
+            
+            await _bookmarkTagRepository.AddAsync(new BookmarkTag { BookmarkId = bookmarkId1, TagId = guid1 });
+            await _bookmarkTagRepository.AddAsync(new BookmarkTag { BookmarkId = bookmarkId2, TagId = guid1 });
+            await _bookmarkTagRepository.AddAsync(new BookmarkTag { BookmarkId = bookmarkId3, TagId = guid1 });
+            await _bookmarkTagRepository.AddAsync(new BookmarkTag { BookmarkId = bookmarkId1, TagId = guid2 });
+            await _bookmarkTagRepository.AddAsync(new BookmarkTag { BookmarkId = bookmarkId2, TagId = guid3 });
+            await _bookmarkTagRepository.AddAsync(new BookmarkTag { BookmarkId = bookmarkId3, TagId = guid3 });
+
+            // Act
+            var result = await _tagService.GetMostUsedTagsAsync(2);
+
+            // Assert
+            result.Should().HaveCount(2);
+            result.First().Id.Should().Be(guid1); // Tag1 should be first (3 uses)
+            result.Skip(1).First().Id.Should().Be(guid3); // Tag3 should be second (2 uses)
+        }
+
+        [Test]
+        public async Task GetMostUsedTagsAsync_WithNoTags_ReturnsEmptyList()
+        {
+            // Arrange
+            // No tags
+            
+            // Act
+            var result = await _tagService.GetMostUsedTagsAsync();
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().BeEmpty();
+        }
+
+        [Test]
+        public void MergeTagsAsync_WithNonexistentSourceTag_ThrowsKeyNotFoundException()
+        {
+            // Arrange
+            var targetGuid = Guid.NewGuid();
+            var targetTag = new Tag { Id = targetGuid, Name = "Target" };
+            _tagRepository.AddAsync(targetTag).Wait();
+
+            // Act & Assert
+            var exception = Assert.ThrowsAsync<KeyNotFoundException>(() => 
+                _tagService.MergeTagsAsync(Guid.NewGuid(), targetGuid));
+                
+            exception.Message.Should().Contain("Source tag with ID");
+        }
+
+        [Test]
+        public void MergeTagsAsync_WithNonexistentTargetTag_ThrowsKeyNotFoundException()
+        {
+            // Arrange
+            var sourceGuid = Guid.NewGuid();
+            var sourceTag = new Tag { Id = sourceGuid, Name = "Source" };
+            _tagRepository.AddAsync(sourceTag).Wait();
+
+            // Act & Assert
+            var exception = Assert.ThrowsAsync<KeyNotFoundException>(() => 
+                _tagService.MergeTagsAsync(sourceGuid, Guid.NewGuid()));
+                
+            exception.Message.Should().Contain("Target tag with ID");
+        }
+
+        [Test]
+        public void MergeTagsAsync_WithSameSourceAndTargetId_ThrowsArgumentException()
+        {
+            // Act & Assert
+            var guid = Guid.NewGuid();
+            var exception = Assert.ThrowsAsync<ArgumentException>(() => 
+                _tagService.MergeTagsAsync(guid, guid));
+                
+            exception.Message.Should().Contain("Source and target tags cannot be the same");
+        }
+
+        [Test]
+        public void MergeTagsAsync_WithInvalidSourceId_ThrowsArgumentException()
+        {
+            // Act & Assert
+            var exception = Assert.ThrowsAsync<ArgumentException>(() => 
+                _tagService.MergeTagsAsync(Guid.Empty, Guid.NewGuid()));
+                
+            exception.Message.Should().Contain("Source tag ID");
+        }
+
+        [Test]
+        public void MergeTagsAsync_WithInvalidTargetId_ThrowsArgumentException()
+        {
+            // Act & Assert
+            var exception = Assert.ThrowsAsync<ArgumentException>(() => 
+                _tagService.MergeTagsAsync(Guid.NewGuid(), Guid.Empty));
+                
+            exception.Message.Should().Contain("Target tag ID");
+        }
+        
+        [Test]
+        public async Task MergeTagsAsync_MergesTagsSuccessfully()
+        {
+            // Arrange
+            var sourceGuid = Guid.NewGuid();
+            var targetGuid = Guid.NewGuid();
+            
+            var sourceTag = new Tag { Id = sourceGuid, Name = "Source" };
+            var targetTag = new Tag { Id = targetGuid, Name = "Target" };
+            
+            await _tagRepository.AddAsync(sourceTag);
+            await _tagRepository.AddAsync(targetTag);
+            
+            var bookmarkId1 = Guid.NewGuid();
+            var bookmarkId2 = Guid.NewGuid();
+            var bookmarkId3 = Guid.NewGuid();
+            
+            // Add some bookmark-tag relations for source tag
+            await _bookmarkTagRepository.AddAsync(new BookmarkTag { BookmarkId = bookmarkId1, TagId = sourceGuid });
+            await _bookmarkTagRepository.AddAsync(new BookmarkTag { BookmarkId = bookmarkId2, TagId = sourceGuid });
+            
+            // And one for target tag
+            await _bookmarkTagRepository.AddAsync(new BookmarkTag { BookmarkId = bookmarkId3, TagId = targetGuid });
+
+            // Act
+            var result = await _tagService.MergeTagsAsync(sourceGuid, targetGuid);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Id.Should().Be(targetGuid);
+            result.Name.Should().Be("Target");
+            
+            // Verify source tag was deleted
+            var sourceTagExists = await _tagRepository.ExistsAsync(t => t.Id == sourceGuid);
+            sourceTagExists.Should().BeFalse();
+            
+            // Verify all relations were moved
+            var relations = await _bookmarkTagRepository.FindAsync(bt => bt.TagId == targetGuid);
+            var relationsList = relations.ToList();
+            relationsList.Should().HaveCount(3);
+            relationsList.Select(r => r.BookmarkId).Should().Contain(new[] { bookmarkId1, bookmarkId2, bookmarkId3 });
+        }
+        
+        [Test]
+        public async Task MergeTagsAsync_SkipsExistingRelations()
+        {
+            // Arrange
+            var sourceGuid = Guid.NewGuid();
+            var targetGuid = Guid.NewGuid();
+            
+            var sourceTag = new Tag { Id = sourceGuid, Name = "Source" };
+            var targetTag = new Tag { Id = targetGuid, Name = "Target" };
+            
+            await _tagRepository.AddAsync(sourceTag);
+            await _tagRepository.AddAsync(targetTag);
+            
+            var bookmarkId1 = Guid.NewGuid();
+            var bookmarkId2 = Guid.NewGuid();
+            
+            // Add overlapping relations to both source and target
+            await _bookmarkTagRepository.AddAsync(new BookmarkTag { BookmarkId = bookmarkId1, TagId = sourceGuid });
+            await _bookmarkTagRepository.AddAsync(new BookmarkTag { BookmarkId = bookmarkId1, TagId = targetGuid }); // Same bookmark tagged with both tags
+            await _bookmarkTagRepository.AddAsync(new BookmarkTag { BookmarkId = bookmarkId2, TagId = sourceGuid });
+
+            // Act
+            var result = await _tagService.MergeTagsAsync(sourceGuid, targetGuid);
+
+            // Assert
+            result.Should().NotBeNull();
+            
+            // Verify relations were properly merged (no duplicates)
+            var relations = await _bookmarkTagRepository.FindAsync(bt => bt.TagId == targetGuid);
+            var relationsList = relations.ToList();
+            relationsList.Should().HaveCount(2);
+            relationsList.Select(r => r.BookmarkId).Should().Contain(new[] { bookmarkId1, bookmarkId2 });
+        }
+
+        [Test]
+        public async Task GetTagSuggestionsAsync_WithValidPartialName_ReturnsMatchingTags()
+        {
+            // Arrange
+            await _tagRepository.AddAsync(new Tag { Name = "Technology" });
+            await _tagRepository.AddAsync(new Tag { Name = "Tech News" });
+            await _tagRepository.AddAsync(new Tag { Name = "Science" });
+            await _tagRepository.AddAsync(new Tag { Name = "Technical" });
+            await _tagRepository.AddAsync(new Tag { Name = "Programming" });
+
+            // Act
+            var result = await _tagService.GetTagSuggestionsAsync("tech", 3);
+
+            // Assert
+            result.Should().HaveCount(3);
+            result.All(t => t.Name.ToLower().Contains("tech")).Should().BeTrue();
+        }
+
+        [Test]
+        public async Task GetTagSuggestionsAsync_WithNoMatches_ReturnsEmptyList()
+        {
+            // Arrange
+            await _tagRepository.AddAsync(new Tag { Name = "Science" });
+            await _tagRepository.AddAsync(new Tag { Name = "Programming" });
+
+            // Act
+            var result = await _tagService.GetTagSuggestionsAsync("xyz");
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().BeEmpty();
+        }
+    }
+}

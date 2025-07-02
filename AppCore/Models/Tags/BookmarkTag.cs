@@ -5,17 +5,12 @@ namespace AppCore.Models.Tags
     /// <summary>
     /// Join entity for the many-to-many relationship between Bookmarks and Tags
     /// </summary>
-    public class BookmarkTag : IEntity
+    public class BookmarkTag : BaseEntity
     {
-        /// <summary>
-        /// Unique identifier for the entity
-        /// </summary>
-        public int Id { get; set; }
-
         /// <summary>
         /// ID of the bookmark
         /// </summary>
-        public int BookmarkId { get; set; }
+        public Guid BookmarkId { get; set; }
 
         /// <summary>
         /// Bookmark associated with this tag
@@ -25,7 +20,7 @@ namespace AppCore.Models.Tags
         /// <summary>
         /// ID of the tag
         /// </summary>
-        public int TagId { get; set; }
+        public Guid TagId { get; set; }
 
         /// <summary>
         /// Tag associated with this bookmark

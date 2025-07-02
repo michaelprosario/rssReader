@@ -17,7 +17,7 @@ namespace AppCore.Services
         /// </summary>
         /// <param name="id">Entity Id</param>
         /// <returns>Entity if found, otherwise null</returns>
-        Task<T?> GetByIdAsync(int id);
+        Task<T?> GetByIdAsync(Guid id);
 
         /// <summary>
         /// Get all entities
@@ -58,7 +58,7 @@ namespace AppCore.Services
         /// </summary>
         /// <param name="id">Id of the entity to delete</param>
         /// <returns>True if deleted, false if not found</returns>
-        Task<bool> DeleteAsync(int id);
+        Task<bool> DeleteAsync(Guid id);
 
         /// <summary>
         /// Delete an entity

@@ -1,3 +1,4 @@
+// filepath: /workspaces/rssReader/AppCore.UnitTests/Services/Feeds/FeedServiceTests.cs
 using AppCore.Models;
 using AppCore.Models.Feeds;
 using AppCore.Repositories;
@@ -56,7 +57,7 @@ namespace AppCore.UnitTests.Services.Feeds
 
             // Assert
             result.Should().NotBeNull();
-            result.Id.Should().BeGreaterThan(0);
+            result.Id.Should().NotBe(Guid.Empty);
             result.Title.Should().Be("Test Feed");
             result.FeedUrl.Should().Be("https://example.com/feed");
             
@@ -237,7 +238,7 @@ namespace AppCore.UnitTests.Services.Feeds
                 FeedUrl = "https://example.com/feed"
             };
             feed = await _feedRepository.AddAsync(feed);
-            int feedId = feed.Id;
+            Guid feedId = feed.Id;
             
             // Act
             var result = await _feedService.DeleteAsync(feedId);

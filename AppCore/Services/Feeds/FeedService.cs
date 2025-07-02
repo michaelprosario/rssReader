@@ -71,10 +71,8 @@ namespace AppCore.Services.Feeds
         /// </summary>
         /// <param name="feedId">The ID of the feed to refresh</param>
         /// <returns>The refreshed feed</returns>
-        public async Task<Feed?> RefreshFeedAsync(int feedId)
+        public async Task<Feed?> RefreshFeedAsync(Guid feedId)
         {
-            if (feedId <= 0)
-                throw new ArgumentException("Feed ID must be greater than zero", nameof(feedId));
 
             var feed = await _repository.GetByIdAsync(feedId);
             if (feed == null)
@@ -123,11 +121,8 @@ namespace AppCore.Services.Feeds
         /// <param name="feedId">The feed ID</param>
         /// <param name="refreshIntervalMinutes">The new refresh interval in minutes</param>
         /// <returns>The updated feed</returns>
-        public async Task<Feed?> UpdateRefreshIntervalAsync(int feedId, int? refreshIntervalMinutes)
+        public async Task<Feed?> UpdateRefreshIntervalAsync(Guid feedId, int? refreshIntervalMinutes)
         {
-            if (feedId <= 0)
-                throw new ArgumentException("Feed ID must be greater than zero", nameof(feedId));
-
             if (refreshIntervalMinutes.HasValue && refreshIntervalMinutes.Value <= 0)
                 throw new ArgumentException("Refresh interval must be greater than zero", nameof(refreshIntervalMinutes));
 
@@ -146,11 +141,8 @@ namespace AppCore.Services.Feeds
         /// </summary>
         /// <param name="feedId">The feed ID</param>
         /// <returns>Number of articles marked as read</returns>
-        public async Task<int> MarkAllArticlesAsReadAsync(int feedId)
+        public async Task<int> MarkAllArticlesAsReadAsync(Guid feedId)
         {
-            if (feedId <= 0)
-                throw new ArgumentException("Feed ID must be greater than zero", nameof(feedId));
-
             var feed = await _repository.GetByIdAsync(feedId);
             if (feed == null)
                 throw new KeyNotFoundException($"Feed with ID {feedId} not found");

@@ -14,7 +14,7 @@ namespace AppCore.Services.Settings
     {
         private readonly IRepository<AppSettings> _settingsRepository;
         private readonly IValidator<AppSettings>? _validator;
-        private const int DefaultSettingsId = 1;
+        private readonly Guid DefaultSettingsId = Guid.Parse("11111111-1111-1111-1111-111111111111"); 
 
         /// <summary>
         /// Constructor

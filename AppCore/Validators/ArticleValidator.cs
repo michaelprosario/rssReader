@@ -27,9 +27,6 @@ namespace AppCore.Validators
                 .NotEmpty().WithMessage("Article unique ID is required.")
                 .MaximumLength(500).WithMessage("Article unique ID cannot exceed 500 characters.");
 
-            RuleFor(a => a.FeedId)
-                .GreaterThan(0).WithMessage("Feed ID must be provided.");
-
             RuleFor(a => a.PublishedAt)
                 .NotEmpty().WithMessage("Article publication date is required.");
         }

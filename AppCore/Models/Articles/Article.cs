@@ -64,7 +64,7 @@ namespace AppCore.Models
         /// <summary>
         /// ID of the feed this article belongs to
         /// </summary>
-        public int FeedId { get; set; }
+        public Guid FeedId { get; set; }
 
         /// <summary>
         /// Feed this article belongs to

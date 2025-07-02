@@ -1,0 +1,352 @@
+@page "/view-feed-posts/{id}"
+@using AppCore.Models
+@using AppCore.Services.Feeds
+@using AppCore.Services.Articles
+@using AppCore.Services.Bookmarks
+@inject IJSRuntime JSRuntime
+@inject IFeedService FeedService
+@inject IBookmarkService BookmarkService
+@inject IArticleService ArticleService
+@inject IArticleService2 ArticleService2
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+
+<PageTitle>@(feed?.Title ?? "Feed Posts")</PageTitle>
+
+<div class="container mt-4">
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center my-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (feed == null)
+    {
+        <div class="alert alert-danger">
+            <h4>Feed not found</h4>
+            <p>The requested feed could not be found. It may have been removed or the URL might be incorrect.</p>
+            <a href="/feeds" class="btn btn-primary">
+                <i class="bi bi-arrow-left"></i> Back to Feeds
+            </a>
+            
+        </div>
+    }
+    else
+    {
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h1 class="mb-0">@feed.Title</h1>
+                            <div>
+                                <a href="@($"/edit-feed/{feed.Id}")" class="btn btn-outline-secondary">
+                                    <i class="bi bi-pencil"></i> Edit Feed
+                                </a>
+                                <button class="btn btn-outline-primary ms-2" @onclick="RefreshFeed">
+                                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(feed.Description))
+                        {
+                            <p class="lead">@feed.Description</p>
+                        }
+
+                        <div class="d-flex flex-wrap align-items-center mt-3">
+                            <div class="me-4 mb-2">
+                                <i class="bi bi-link"></i> 
+                                <a href="@feed.WebsiteUrl" target="_blank" rel="noopener noreferrer">Visit Website</a>
+                            </div>
+                            <div class="me-4 mb-2">
+                                <i class="bi bi-rss"></i> 
+                                <a href="@feed.FeedUrl" target="_blank" rel="noopener noreferrer">Feed URL</a>
+                            </div>
+                            <div class="me-4 mb-2">
+                                <i class="bi bi-clock"></i> 
+                                Last updated: @(feed.LastFetchedAt?.ToString("g") ?? "Never")
+                            </div>
+                            <div class="me-4 mb-2">
+                                <span class="badge bg-primary">@feed.FeedType</span>
+                                @if (feed.UnreadCount > 0)
+                                {
+                                    <span class="badge bg-success ms-1">@feed.UnreadCount unread</span>
+                                }
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(feed.LastFetchError))
+                        {
+                            <div class="alert alert-warning mt-3">
+                                <i class="bi bi-exclamation-triangle"></i> 
+                                <strong>Error fetching feed:</strong> @feed.LastFetchError
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2>Posts</h2>
+            <div>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-secondary @(showOnlyUnread ? "" : "active")" @onclick="() => SetShowOnlyUnread(false)">
+                        All Posts
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary @(showOnlyUnread ? "active" : "")" @onclick="() => SetShowOnlyUnread(true)">
+                        Unread Posts
+                    </button>
+                </div>
+                <button class="btn btn-outline-secondary ms-2" @onclick="MarkAllAsRead">
+                    <i class="bi bi-check-all"></i> Mark All as Read
+                </button>
+            </div>
+        </div>
+
+        @if (articles == null || !articles.Any())
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No posts found for this feed.
+            </div>
+        }
+        else
+        {
+            <div class="row">
+                @foreach (var article in articles)
+                {
+                    <div class="col-md-12 mb-3">
+                        <div class="card @(!article.IsRead ? "border-success" : "")">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <h4 class="card-title">
+                                        <a href="@article.Url" target="_blank">
+                                            @article.Title
+                                        </a>
+                                    </h4>
+                                </div>
+
+                                <div class="d-flex align-items-center mb-2 text-muted small">
+                                    <div class="me-3">
+                                        <i class="bi bi-calendar"></i> @article.PublishedAt.ToString("MMM d, yyyy")
+                                    </div>
+                                    
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(article.Summary))
+                                {
+                                    <p class="card-text">@((MarkupString)article.Summary)</p>
+                                }
+
+                                
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (isLoading)
+            {
+                <div class="d-flex justify-content-center my-3">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+        }
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger mt-3">
+            <i class="bi bi-exclamation-circle"></i> @errorMessage
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    private Feed? feed;
+    private List<Article>? articles;
+    private bool isLoading = true;
+    private bool showOnlyUnread = false;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFeedData();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Guid.TryParse(Id, out _))
+        {
+            await LoadFeedData();
+        }
+    }
+
+    private async Task LoadFeedData()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            if (Guid.TryParse(Id, out Guid feedGuid))
+            {
+                feed = await FeedService.GetByIdAsync(feedGuid);
+                if (feed != null)
+                {
+                    await LoadArticles();
+                }
+            }
+            else
+            {
+                errorMessage = "Invalid feed ID format.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading feed: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadArticles()
+    {
+        if (feed == null) return;
+        
+
+        try
+        {
+            // todo - fix case of showing only unread articles
+            //articles = showOnlyUnread
+            //    ? (await ArticleService.GetArticlesByFeedAsync(feed.Id)).ToList()
+            //    : (await ArticleService.GetArticlesByFeedAsync(feed.Id)).ToList();
+
+            articles = await ArticleService2.GetArticlesFromFeedAsync(feed.Id, 30);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading articles: {ex.Message}";
+        }
+    }
+
+    private async Task RefreshFeed()
+    {
+        if (feed == null) return;
+
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            // Assuming the feed service has a refresh method
+            await FeedService.RefreshFeedAsync(feed.Id);
+            
+            // Reload the feed and articles
+            feed = await FeedService.GetByIdAsync(feed.Id);
+            await LoadArticles();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error refreshing feed: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SetShowOnlyUnread(bool value)
+    {
+        if (showOnlyUnread == value) return;
+        
+        showOnlyUnread = value;
+        await LoadArticles();
+    }
+
+    private async Task MarkAllAsRead()
+    {
+        if (feed == null || articles == null || !articles.Any()) return;
+
+        isLoading = true;
+        try
+        {
+            
+            // Update the UI
+            foreach (var article in articles)
+            {
+                article.IsRead = true;
+                ArticleService.MarkAsReadAsync(article.Id); // Ensure each article is marked as read
+            }
+            
+            feed.UnreadCount = 0;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error marking articles as read: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ToggleReadStatus(Article article)
+    {
+        try
+        {
+            article.IsRead = !article.IsRead;
+            
+            // Update the article read status
+            if( article.IsRead)
+            {
+                ArticleService.MarkAsUnreadAsync(article.Id);
+            }
+            else
+            {
+                ArticleService.MarkAsReadAsync(article.Id);
+            }
+            
+            // Update the unread count in the feed
+            if (feed != null)
+            {
+                feed.UnreadCount = article.IsRead 
+                    ? Math.Max(0, feed.UnreadCount - 1) 
+                    : feed.UnreadCount + 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error updating read status: {ex.Message}";
+            // Revert the change in UI
+            article.IsRead = !article.IsRead;
+        }
+    }
+
+    private async Task BookmarkArticle(Article article)
+    {
+        try
+        {
+            // Assuming there's a method to bookmark an article
+            await BookmarkService.BookmarkArticleAsync(article.Id);
+            
+            // You might want to show a success message or update UI
+            JSRuntime.InvokeVoidAsync("alert", "Article bookmarked successfully!");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error bookmarking article: {ex.Message}";
+        }
+    }
+}

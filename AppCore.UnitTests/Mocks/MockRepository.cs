@@ -1,3 +1,4 @@
+// filepath: /workspaces/rssReader/AppCore.UnitTests/Mocks/MockRepository.cs
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,18 +14,13 @@ namespace AppCore.UnitTests.Mocks
     /// </summary>
     public class MockRepository<T> : IRepository<T> where T : IEntity
     {
-        private readonly Dictionary<int, T> _entities = new Dictionary<int, T>();
-        private int _nextId = 1;
+        private readonly Dictionary<Guid, T> _entities = new Dictionary<Guid, T>();
 
         public Task<T> AddAsync(T entity)
         {
-            if (entity.Id <= 0)
+            if (entity.Id == Guid.Empty)
             {
-                entity.Id = _nextId++;
-            }
-            else if (entity.Id >= _nextId)
-            {
-                _nextId = entity.Id + 1;
+                entity.Id = Guid.NewGuid();
             }
 
             _entities[entity.Id] = entity;
@@ -53,7 +49,7 @@ namespace AppCore.UnitTests.Mocks
             return Task.FromResult(_entities.Values.Count(compiledPredicate));
         }
 
-        public Task<bool> DeleteAsync(int id)
+        public Task<bool> DeleteAsync(Guid id)
         {
             return Task.FromResult(_entities.Remove(id));
         }
@@ -100,7 +96,7 @@ namespace AppCore.UnitTests.Mocks
             return Task.FromResult(_entities.Values.AsEnumerable());
         }
 
-        public Task<T?> GetByIdAsync(int id)
+        public Task<T?> GetByIdAsync(Guid id)
         {
             _entities.TryGetValue(id, out var entity);
             return Task.FromResult(entity);
@@ -111,7 +107,7 @@ namespace AppCore.UnitTests.Mocks
             if (entity == null)
                 throw new ArgumentNullException(nameof(entity));
             
-            if (entity.Id <= 0 || !_entities.ContainsKey(entity.Id))
+            if (entity.Id == Guid.Empty || !_entities.ContainsKey(entity.Id))
                 throw new KeyNotFoundException($"Entity with ID {entity.Id} not found");
             
             _entities[entity.Id] = entity;

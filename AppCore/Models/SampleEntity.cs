@@ -6,11 +6,9 @@ using System.Threading.Tasks;
 
 namespace AppCore.Models
 {
-    public class SampleEntity : IEntity
+    public class SampleEntity : BaseEntity
     {
-        public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

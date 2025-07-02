@@ -10,7 +10,7 @@ namespace AppCore.Models
         /// <summary>
         /// Unique identifier for the entity
         /// </summary>
-        public int Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
         
         /// <summary>
         /// Date and time when the entity was created
